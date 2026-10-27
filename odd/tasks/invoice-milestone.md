@@ -20,12 +20,12 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 
 ## Tasks
 
-- T1 [S1,S2,S3] Scaffold module, README, package docs — inline — commit: pending
-- T2 [S4,S8] `model` + `catalog`: invoice, company, client, address, line, legends, payment terms — inline — commit: pending
-- T3 [S2,S10] `ubl`: Invoice 2.1 XML builder + golden test — inline — commit: pending
-- T4 [S5,S8] `sign`: PFX/PEM loading + enveloped XMLDSig inside ext:ExtensionContent, verified by xmlsec1 — inline — commit: pending
-- T5 [S5,S6,S7] `transport`: zip + SOAP sendBill with WS-Security, SOAP fault → typed error — inline — commit: pending
-- T6 [S7,S8] `cdr`: unzip ApplicationResponse, response code, description, notes — inline — commit: pending
+- T1 [S1,S2,S3] Scaffold module, README, package docs — inline — commit: 83c9313 ✅
+- T2 [S4,S8] `model` + `catalog`: invoice, company, client, address, line, legends, payment terms — inline — commit: 83c9313 ✅
+- T3 [S2,S10] `ubl`: Invoice 2.1 XML builder + golden test — inline — commit: cd5e688 ✅
+- T4 [S5,S8] `sign`: PFX/PEM loading + enveloped XMLDSig inside ext:ExtensionContent, verified by xmlsec1 — inline — commit: ae56d23 ✅
+- T5 [S5,S6,S7] `transport`: zip + SOAP sendBill with WS-Security, SOAP fault → typed error — inline — commit: bcc1970 ✅
+- T6 [S7,S8] `cdr`: unzip ApplicationResponse, response code, description, notes — inline — commit: 7ea3114 ✅
 - T7 [S5,S6,S9] `sunat.Client` facade + opt-in beta integration test (env-gated) — inline — commit: pending
 
 ## Log
