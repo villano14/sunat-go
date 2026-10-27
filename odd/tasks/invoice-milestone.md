@@ -41,3 +41,4 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - L9 (decision): signature Id must be a valid NCName (xs:ID); invalid Ids are rejected with an error instead of escaped.
 - L10 (evidence): L8 defects fixed in 74d270d by gentle-ai-worker with RED per defect and xmlsec1 verification; parent re-ran gofmt/vet/full suite green.
 - L11 (evidence, S9, user approved "Ok vamos!"): `SUNAT_BETA=1 go test -run TestBeta .` → CDR code=0 "La Factura numero F001-93121214, ha sido aceptada", notes=[]. Milestone 1 complete. Signature RSA-SHA1 default, self-signed cert, credentials 20000000001MODDATOS.
+- L12 (fix, from APISunatGo adapter verification): transport errors no longer embed response bodies (credential echo risk); non-SOAP failures are *transport.HTTPError{StatusCode}. Commit a74d500.
