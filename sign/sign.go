@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
@@ -23,6 +24,7 @@ import (
 
 const (
 	nsDS          = "http://www.w3.org/2000/09/xmldsig#"
+	nsExtension   = "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2"
 	algC14N       = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
 	algEnveloped  = "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
 	defaultSignID = "SUNATGO-SIGN"
@@ -57,8 +59,9 @@ type XMLSigner struct {
 // Option configures an XMLSigner.
 type Option func(*XMLSigner)
 
-// WithID sets the ds:Signature Id. It must match the cac:Signature URI of the
-// document; the ubl package uses the default "SUNATGO-SIGN".
+// WithID sets the ds:Signature Id. It must be an XML NCName and match the
+// cac:Signature URI of the document; the ubl package uses "SUNATGO-SIGN".
+// Sign rejects invalid IDs with an error starting with "sign: invalid signature id".
 func WithID(id string) Option { return func(s *XMLSigner) { s.id = id } }
 
 // WithAlgorithm selects the signature and digest algorithm.
@@ -78,6 +81,9 @@ func (s *XMLSigner) Sign(doc []byte) ([]byte, error) {
 	if s.cert.Key == nil || s.cert.Cert == nil {
 		return nil, errors.New("sign: certificate and key are required")
 	}
+	if !validNCName(s.id) {
+		return nil, fmt.Errorf("sign: invalid signature id %q", s.id)
+	}
 	d := etree.NewDocument()
 	if err := d.ReadFromBytes(doc); err != nil {
 		return nil, fmt.Errorf("sign: parse xml: %w", err)
@@ -86,6 +92,9 @@ func (s *XMLSigner) Sign(doc []byte) ([]byte, error) {
 	if root == nil {
 		return nil, errors.New("sign: empty document")
 	}
+	if len(d.ChildElements()) != 1 {
+		return nil, errors.New("sign: multiple root elements")
+	}
 	target := findExtensionContent(root)
 	if target == nil {
 		return nil, errors.New("sign: ext:ExtensionContent not found")
@@ -93,7 +102,7 @@ func (s *XMLSigner) Sign(doc []byte) ([]byte, error) {
 
 	// Enveloped transform: the digest covers the document without the
 	// signature, which is exactly the document before insertion.
-	canonical, err := dsig.MakeC14N10RecCanonicalizer().Canonicalize(root)
+	canonical, err := canonicalDocument(d)
 	if err != nil {
 		return nil, fmt.Errorf("sign: canonicalize document: %w", err)
 	}
@@ -103,11 +112,11 @@ func (s *XMLSigner) Sign(doc []byte) ([]byte, error) {
 	}
 
 	signedInfo := s.signedInfo(base64.StdEncoding.EncodeToString(digest))
-	// Inclusive C14N renders every in-scope namespace on the SignedInfo apex,
-	// including the ones inherited from the document root.
+	// Inclusive C14N renders in-scope namespaces and inherited xml:*
+	// attributes on the SignedInfo apex, with namespaces before attributes.
 	ns := inScopeNamespaces(target)
 	ns["ds"] = nsDS
-	canonicalSI := "<ds:SignedInfo" + renderNamespaces(ns) + ">" + signedInfo + "</ds:SignedInfo>"
+	canonicalSI := "<ds:SignedInfo" + renderNamespaces(ns) + renderXMLAttributes(target) + ">" + signedInfo + "</ds:SignedInfo>"
 	siDigest, err := s.hash([]byte(canonicalSI))
 	if err != nil {
 		return nil, err
@@ -131,6 +140,8 @@ func (s *XMLSigner) Sign(doc []byte) ([]byte, error) {
 	// No whitespace is added around the signature: the enveloped transform
 	// removes only the element, so extra text would break the digest.
 	target.AddChild(frag.Root())
+	// Preserve referenced tabs, newlines and carriage returns in attributes.
+	d.WriteSettings.CanonicalAttrVal = true
 	out, err := d.WriteToBytes()
 	if err != nil {
 		return nil, fmt.Errorf("sign: write xml: %w", err)
@@ -158,8 +169,106 @@ func (s *XMLSigner) hash(b []byte) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
+// canonicalDocument includes top-level processing instructions, but neither
+// the XML declaration nor comments. Whitespace outside the root is omitted.
+func canonicalDocument(d *etree.Document) ([]byte, error) {
+	root := d.Root().Copy()
+	stripXMLNamespace(root)
+	canonicalRoot, err := dsig.MakeC14N10RecCanonicalizer().Canonicalize(root)
+	if err != nil {
+		return nil, err
+	}
+	var b strings.Builder
+	afterRoot := false
+	for _, token := range d.Child {
+		switch node := token.(type) {
+		case *etree.Element:
+			b.Write(canonicalRoot)
+			afterRoot = true
+		case *etree.ProcInst:
+			if node.Target == "xml" {
+				continue
+			}
+			if afterRoot {
+				b.WriteByte('\n')
+			}
+			b.WriteString("<?" + node.Target)
+			if node.Inst != "" {
+				b.WriteByte(' ')
+				b.WriteString(strings.ReplaceAll(node.Inst, "\r", "&#xD;"))
+			}
+			b.WriteString("?>")
+			if !afterRoot {
+				b.WriteByte('\n')
+			}
+		}
+	}
+	return []byte(b.String()), nil
+}
+
+// C14N never renders the predefined xml namespace, even when explicit.
+// Only the digest's copy is changed; the output keeps the declarations.
+func stripXMLNamespace(el *etree.Element) {
+	el.RemoveAttr("xmlns:xml")
+	for _, child := range el.ChildElements() {
+		stripXMLNamespace(child)
+	}
+}
+
+// renderXMLAttributes renders inherited xml:* attributes in C14N order.
+// All have the same namespace URI, so their local names determine the order.
+func renderXMLAttributes(el *etree.Element) string {
+	attrs := map[string]string{}
+	for e := el; e != nil; e = e.Parent() {
+		for _, a := range e.Attr {
+			if a.Space == "xml" {
+				if _, seen := attrs[a.Key]; !seen {
+					attrs[a.Key] = a.Value
+				}
+			}
+		}
+	}
+	keys := make([]string, 0, len(attrs))
+	for key := range attrs {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for _, key := range keys {
+		b.WriteString(` xml:` + key + `="` + escapeAttr(attrs[key]) + `"`)
+	}
+	return b.String()
+}
+
+// validNCName implements XML 1.0 NameStartChar/NameChar without the colon.
+func validNCName(name string) bool {
+	if name == "" || !utf8.ValidString(name) {
+		return false
+	}
+	for i, r := range name {
+		if ncNameStart(r) {
+			continue
+		}
+		if i == 0 || !(r == '-' || r == '.' || r >= '0' && r <= '9' ||
+			r == 0xB7 || r >= 0x300 && r <= 0x36F || r >= 0x203F && r <= 0x2040) {
+			return false
+		}
+	}
+	return true
+}
+
+func ncNameStart(r rune) bool {
+	return r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' ||
+		r >= 0xC0 && r <= 0xD6 || r >= 0xD8 && r <= 0xF6 ||
+		r >= 0xF8 && r <= 0x2FF || r >= 0x370 && r <= 0x37D ||
+		r >= 0x37F && r <= 0x1FFF || r >= 0x200C && r <= 0x200D ||
+		r >= 0x2070 && r <= 0x218F || r >= 0x2C00 && r <= 0x2FEF ||
+		r >= 0x3001 && r <= 0xD7FF || r >= 0xF900 && r <= 0xFDCF ||
+		r >= 0xFDF0 && r <= 0xFFFD || r >= 0x10000 && r <= 0xEFFFF
+}
+
 func findExtensionContent(el *etree.Element) *etree.Element {
-	if el.Tag == "ExtensionContent" {
+	if el.Tag == "ExtensionContent" && el.NamespaceURI() == nsExtension {
 		return el
 	}
 	for _, c := range el.ChildElements() {
@@ -192,6 +301,7 @@ func inScopeNamespaces(el *etree.Element) map[string]string {
 	if ns[""] == "" {
 		delete(ns, "") // xmlns="" is not rendered on the apex
 	}
+	delete(ns, "xml") // the predefined xml namespace is never rendered
 	return ns
 }
 
