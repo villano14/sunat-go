@@ -168,3 +168,30 @@ func TestEndpoints(t *testing.T) {
 		t.Errorf("BillProduction = %q", transport.BillProduction)
 	}
 }
+
+func TestSendBillHTTPErrorHidesBody(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusBadGateway, http.StatusServiceUnavailable} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			w.WriteHeader(status)
+			// A misbehaving gateway echoing the request, credentials included.
+			w.Write(append([]byte("diagnostic: "), body...))
+		}))
+		_, err := transport.New(srv.URL, creds).SendBill(context.Background(), "x", []byte("<a/>"))
+		srv.Close()
+		if err == nil {
+			t.Fatalf("status %d: expected error", status)
+		}
+		if strings.Contains(err.Error(), creds.Password) || strings.Contains(err.Error(), "MODDATOS") {
+			t.Errorf("status %d: error exposes credentials: %v", status, err)
+		}
+		var hErr *transport.HTTPError
+		if status != http.StatusOK {
+			if !errors.As(err, &hErr) || hErr.StatusCode != status {
+				t.Errorf("status %d: error = %v, want *transport.HTTPError with StatusCode", status, err)
+			}
+		} else if errors.As(err, &hErr) {
+			t.Errorf("status 200 with non-SOAP body must not be an HTTPError: %v", err)
+		}
+	}
+}

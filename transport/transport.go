@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -49,6 +50,16 @@ func (e *Error) Error() string {
 		return "sunat: " + e.Code + ": " + e.Message
 	}
 	return "sunat: soap fault " + e.FaultCode + ": " + e.Message
+}
+
+// HTTPError is a non-SOAP HTTP failure. It deliberately omits the response
+// body so credentials echoed by a proxy cannot leak into logs.
+type HTTPError struct {
+	StatusCode int
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("transport: HTTP %d", e.StatusCode)
 }
 
 // SOAPClient is a Transport for the SUNAT billService.
@@ -133,15 +144,20 @@ func (c *SOAPClient) call(ctx context.Context, action, body string) (*envelope, 
 		return nil, fmt.Errorf("transport: read response: %w", err)
 	}
 
+	// Response bodies never reach error messages: a misbehaving gateway may
+	// echo the request, and with it the SOL credentials.
 	var env envelope
 	if err := xml.Unmarshal(raw, &env); err != nil {
-		return nil, fmt.Errorf("transport: HTTP %d: unexpected response: %s", res.StatusCode, snippet(raw))
+		if res.StatusCode != http.StatusOK {
+			return nil, &HTTPError{StatusCode: res.StatusCode}
+		}
+		return nil, errors.New("transport: unexpected non-SOAP response")
 	}
 	if f := env.Body.Fault; f != nil {
 		return nil, &Error{Code: faultCode(f.Code, f.String), Message: strings.TrimSpace(f.String), FaultCode: f.Code}
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("transport: HTTP %d: %s", res.StatusCode, snippet(raw))
+		return nil, &HTTPError{StatusCode: res.StatusCode}
 	}
 	return &env, nil
 }
@@ -191,12 +207,4 @@ func escape(s string) string {
 	var b strings.Builder
 	_ = xml.EscapeText(&b, []byte(s))
 	return b.String()
-}
-
-func snippet(b []byte) string {
-	const n = 200
-	if len(b) > n {
-		return string(b[:n]) + "..."
-	}
-	return string(b)
 }
