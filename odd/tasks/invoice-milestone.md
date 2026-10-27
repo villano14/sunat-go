@@ -26,7 +26,7 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - T4 [S5,S8] `sign`: PFX/PEM loading + enveloped XMLDSig inside ext:ExtensionContent, verified by xmlsec1 — inline — commit: ae56d23 ✅
 - T5 [S5,S6,S7] `transport`: zip + SOAP sendBill with WS-Security, SOAP fault → typed error — inline — commit: bcc1970 ✅
 - T6 [S7,S8] `cdr`: unzip ApplicationResponse, response code, description, notes — inline — commit: 7ea3114 ✅
-- T7 [S5,S6,S9] `sunat.Client` facade + opt-in beta integration test (env-gated) — inline — commit: pending
+- T7 [S5,S6,S9] `sunat.Client` facade + opt-in beta integration test (env-gated) — gentle-ai-worker — commit: 6df64c2 ✅ (beta run pending user decision)
 
 ## Log
 
@@ -36,3 +36,4 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - L4 (decision): like Greenter, the library does not compute totals in milestone 1; caller supplies amounts. Calculation helpers belong to a later `validate`/calc task.
 - L5 (evidence, T3): golden `ubl/testdata/invoice-basic.xml` is produced by sunat-go itself (regression pin). Comparison against real Greenter output is pending: no Greenter/composer vendor available in this environment.
 - L6 (evidence, T4): xmlsec1 1.2.41 verifies RSA-SHA256 and RSA-SHA1 signatures and rejects a tampered amount. Fedora DEFAULT crypto policy rejects RSA-SHA1 in OpenSSL ("invalid digest"); tests set OPENSSL_ENABLE_SHA1_SIGNATURES=1 for the xmlsec1 subprocess only.
+- L7 (evidence, T7): facade delegated to gentle-ai-worker (context backstop); parent re-ran gofmt/vet/full suite green. TestBuildInvoiceVerifiesWithXmlsec1 proves signature on real UBL output. S9 end-to-end beta acceptance NOT yet run (requires SUNAT_BETA=1, external call — user decision).
