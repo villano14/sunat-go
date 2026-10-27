@@ -23,7 +23,7 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - T1 [S1,S2,S3] Scaffold module, README, package docs — inline — commit: 83c9313 ✅
 - T2 [S4,S8] `model` + `catalog`: invoice, company, client, address, line, legends, payment terms — inline — commit: 83c9313 ✅
 - T3 [S2,S10] `ubl`: Invoice 2.1 XML builder + golden test — inline — commit: cd5e688 ✅
-- T4 [S5,S8] `sign`: PFX/PEM loading + enveloped XMLDSig inside ext:ExtensionContent, verified by xmlsec1 — inline — commit: ae56d23 (reopened, L8)
+- T4 [S5,S8] `sign`: PFX/PEM loading + enveloped XMLDSig inside ext:ExtensionContent, verified by xmlsec1 — inline — commit: ae56d23 + 74d270d ✅ (L8 fixed)
 - T5 [S5,S6,S7] `transport`: zip + SOAP sendBill with WS-Security, SOAP fault → typed error — inline — commit: bcc1970 ✅
 - T6 [S7,S8] `cdr`: unzip ApplicationResponse, response code, description, notes — inline — commit: 7ea3114 ✅
 - T7 [S5,S6,S9] `sunat.Client` facade + opt-in beta integration test (env-gated) — gentle-ai-worker — commit: 6df64c2 ✅ (beta run pending user decision)
@@ -39,3 +39,4 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - L7 (evidence, T7): facade delegated to gentle-ai-worker (context backstop); parent re-ran gofmt/vet/full suite green. TestBuildInvoiceVerifiesWithXmlsec1 proves signature on real UBL output. S9 end-to-end beta acceptance NOT yet run (requires SUNAT_BETA=1, external call — user decision).
 - L8 (evidence, verify of T4/ae56d23): FAIL on S8 standalone signing of arbitrary valid XML: (1) inherited xml:lang/xml:space missing from canonical SignedInfo; (2) processing instructions outside root excluded from digest; (3) explicit xmlns:xml breaks digest; (4) multiple roots and ExtensionContent in wrong namespace accepted; (5) Id with CR silently altered. Ordinary ubl output verified fine. T4 reopened.
 - L9 (decision): signature Id must be a valid NCName (xs:ID); invalid Ids are rejected with an error instead of escaped.
+- L10 (evidence): L8 defects fixed in 74d270d by gentle-ai-worker with RED per defect and xmlsec1 verification; parent re-ran gofmt/vet/full suite green.
