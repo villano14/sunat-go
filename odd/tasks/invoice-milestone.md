@@ -26,7 +26,7 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - T4 [S5,S8] `sign`: PFX/PEM loading + enveloped XMLDSig inside ext:ExtensionContent, verified by xmlsec1 — inline — commit: ae56d23 + 74d270d ✅ (L8 fixed)
 - T5 [S5,S6,S7] `transport`: zip + SOAP sendBill with WS-Security, SOAP fault → typed error — inline — commit: bcc1970 ✅
 - T6 [S7,S8] `cdr`: unzip ApplicationResponse, response code, description, notes — inline — commit: 7ea3114 ✅
-- T7 [S5,S6,S9] `sunat.Client` facade + opt-in beta integration test (env-gated) — gentle-ai-worker — commit: 6df64c2 ✅ (beta run pending user decision)
+- T7 [S5,S6,S9] `sunat.Client` facade + opt-in beta integration test (env-gated) — gentle-ai-worker — commit: 6df64c2 ✅ (beta accepted, L11)
 
 ## Log
 
@@ -40,3 +40,4 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - L8 (evidence, verify of T4/ae56d23): FAIL on S8 standalone signing of arbitrary valid XML: (1) inherited xml:lang/xml:space missing from canonical SignedInfo; (2) processing instructions outside root excluded from digest; (3) explicit xmlns:xml breaks digest; (4) multiple roots and ExtensionContent in wrong namespace accepted; (5) Id with CR silently altered. Ordinary ubl output verified fine. T4 reopened.
 - L9 (decision): signature Id must be a valid NCName (xs:ID); invalid Ids are rejected with an error instead of escaped.
 - L10 (evidence): L8 defects fixed in 74d270d by gentle-ai-worker with RED per defect and xmlsec1 verification; parent re-ran gofmt/vet/full suite green.
+- L11 (evidence, S9, user approved "Ok vamos!"): `SUNAT_BETA=1 go test -run TestBeta .` → CDR code=0 "La Factura numero F001-93121214, ha sido aceptada", notes=[]. Milestone 1 complete. Signature RSA-SHA1 default, self-signed cert, credentials 20000000001MODDATOS.
