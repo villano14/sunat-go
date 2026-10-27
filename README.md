@@ -23,6 +23,27 @@ idiomatic Go library: small packages, no framework, no database.
 Every package can be used on its own. For example, `sign` signs any SUNAT XML you
 already have.
 
+## Usage
+
+Import the root package as `sunat` (`github.com/villano14/sunat-go`). Given a loaded
+`sign.Certificate` named `cert`, SOL `transport.Credentials` named `creds`, and a
+`model.Invoice` named `inv` with caller-supplied decimal amounts:
+
+```go
+client := sunat.New(sign.New(cert), transport.New(transport.BillBeta, creds))
+result, err := client.SendInvoice(ctx, inv)
+// Store result.XML whenever non-empty, even if err != nil.
+if err != nil {
+    return err // errors.As still finds *transport.Error.
+}
+if !result.CDR.Accepted() {
+    return fmt.Errorf("invoice rejected: %s: %s", result.CDR.Code, result.CDR.Description)
+}
+// Store result.CDR.XML as proof of receipt; inspect result.CDR.Notes.
+```
+
+Use `client.BuildInvoice(inv)` to render and sign without sending or performing I/O.
+
 ## Design rules
 
 - Money is `github.com/shopspring/decimal`, never `float64`.
