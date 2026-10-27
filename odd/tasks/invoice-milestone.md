@@ -34,3 +34,4 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - L2 (user decision): name "sunat-go (paquete `sunat`)".
 - L3 (decision): signature defaults mirror Greenter (C14N 1.0 inclusive, RSA-SHA1, SHA1 digest, Reference URI=""), SHA-256 available as option.
 - L4 (decision): like Greenter, the library does not compute totals in milestone 1; caller supplies amounts. Calculation helpers belong to a later `validate`/calc task.
+- L5 (evidence, T3): golden `ubl/testdata/invoice-basic.xml` is produced by sunat-go itself (regression pin). Comparison against real Greenter output is pending: no Greenter/composer vendor available in this environment.
