@@ -35,3 +35,4 @@ model → UBL 2.1 XML → XMLDSig signature → SOAP sendBill → CDR parsing.
 - L3 (decision): signature defaults mirror Greenter (C14N 1.0 inclusive, RSA-SHA1, SHA1 digest, Reference URI=""), SHA-256 available as option.
 - L4 (decision): like Greenter, the library does not compute totals in milestone 1; caller supplies amounts. Calculation helpers belong to a later `validate`/calc task.
 - L5 (evidence, T3): golden `ubl/testdata/invoice-basic.xml` is produced by sunat-go itself (regression pin). Comparison against real Greenter output is pending: no Greenter/composer vendor available in this environment.
+- L6 (evidence, T4): xmlsec1 1.2.41 verifies RSA-SHA256 and RSA-SHA1 signatures and rejects a tampered amount. Fedora DEFAULT crypto policy rejects RSA-SHA1 in OpenSSL ("invalid digest"); tests set OPENSSL_ENABLE_SHA1_SIGNATURES=1 for the xmlsec1 subprocess only.
