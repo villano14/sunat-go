@@ -23,16 +23,17 @@ const SignatureID = "SUNATGO-SIGN"
 var templateFS embed.FS
 
 var templates = template.Must(template.New("").Funcs(template.FuncMap{
-	"x":     escape,
-	"amt":   amount,
-	"price": price,
-	"qty":   quantity,
-	"nz":    nonZero,
-	"date":  formatDate,
-	"time":  func(t time.Time) string { return t.Format("15:04:05") },
-	"def":   orDefault,
-	"seq":   func(i int) string { return fmt.Sprintf("%03d", i+1) },
-	"add1":  func(i int) int { return i + 1 },
+	"x":      escape,
+	"amt":    amount,
+	"price":  price,
+	"qty":    quantity,
+	"factor": factor,
+	"nz":     nonZero,
+	"date":   formatDate,
+	"time":   func(t time.Time) string { return t.Format("15:04:05") },
+	"def":    orDefault,
+	"seq":    func(i int) string { return fmt.Sprintf("%03d", i+1) },
+	"add1":   func(i int) int { return i + 1 },
 }).ParseFS(templateFS, "templates/*.tmpl"))
 
 func render(name string, data any) ([]byte, error) {
@@ -74,6 +75,9 @@ func formatDate(v any) (string, error) {
 	}
 	return "", fmt.Errorf("date: unsupported type %T", v)
 }
+
+// factor formats a multiplier with at most 5 decimals.
+func factor(d decimal.Decimal) string { return d.Round(5).String() }
 
 func nonZero(d decimal.Decimal) bool { return !d.IsZero() }
 

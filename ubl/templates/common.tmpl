@@ -1,0 +1,438 @@
+{{- define "contact"}}
+{{- if or .Email .Phone}}
+      <cac:Contact>
+{{- if .Phone}}
+        <cbc:Telephone>{{x .Phone}}</cbc:Telephone>
+{{- end}}
+{{- if .Email}}
+        <cbc:ElectronicMail>{{x .Email}}</cbc:ElectronicMail>
+{{- end}}
+      </cac:Contact>
+{{- end}}
+{{- end}}
+
+{{- define "orderRef"}}
+{{- if .OrderReference}}
+  <cac:OrderReference>
+    <cbc:ID>{{x .OrderReference}}</cbc:ID>
+  </cac:OrderReference>
+{{- end}}
+{{- end}}
+
+{{- define "despatchRefs"}}
+{{- range .DespatchRefs}}
+  <cac:DespatchDocumentReference>
+    <cbc:ID>{{x .Number}}</cbc:ID>
+    <cbc:DocumentTypeCode>{{x .Type}}</cbc:DocumentTypeCode>
+  </cac:DespatchDocumentReference>
+{{- end}}
+{{- end}}
+
+{{- define "additionalRefs"}}
+{{- $ruc := .Company.RUC}}
+{{- range .RelatedDocs}}
+  <cac:AdditionalDocumentReference>
+    <cbc:ID>{{x .Number}}</cbc:ID>
+    <cbc:DocumentTypeCode>{{x .Type}}</cbc:DocumentTypeCode>
+  </cac:AdditionalDocumentReference>
+{{- end}}
+{{- range .Prepayments}}
+  <cac:AdditionalDocumentReference>
+    <cbc:ID>{{x .Number}}</cbc:ID>
+    <cbc:DocumentTypeCode>{{x .DocType}}</cbc:DocumentTypeCode>
+    <cbc:DocumentStatusCode>{{.Index}}</cbc:DocumentStatusCode>
+    <cac:IssuerParty>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6">{{x $ruc}}</cbc:ID>
+      </cac:PartyIdentification>
+    </cac:IssuerParty>
+  </cac:AdditionalDocumentReference>
+{{- end}}
+{{- end}}
+
+{{- define "signature"}}
+  <cac:Signature>
+    <cbc:ID>{{x .Company.RUC}}</cbc:ID>
+    <cac:SignatoryParty>
+      <cac:PartyIdentification>
+        <cbc:ID>{{x .Company.RUC}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>{{x .Company.LegalName}}</cbc:Name>
+      </cac:PartyName>
+    </cac:SignatoryParty>
+    <cac:DigitalSignatureAttachment>
+      <cac:ExternalReference>
+        <cbc:URI>#{{.SignatureID}}</cbc:URI>
+      </cac:ExternalReference>
+    </cac:DigitalSignatureAttachment>
+  </cac:Signature>
+{{- end}}
+
+{{- define "supplier"}}
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6">{{x .Company.RUC}}</cbc:ID>
+      </cac:PartyIdentification>
+{{- if .Company.TradeName}}
+      <cac:PartyName>
+        <cbc:Name>{{x .Company.TradeName}}</cbc:Name>
+      </cac:PartyName>
+{{- end}}
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Company.LegalName}}</cbc:RegistrationName>
+{{- with .Company.Address}}
+        <cac:RegistrationAddress>
+          <cbc:ID>{{x .Ubigeo}}</cbc:ID>
+          <cbc:AddressTypeCode>{{x (def .EstablishmentCode "0000")}}</cbc:AddressTypeCode>
+{{- if .Urbanization}}
+          <cbc:CitySubdivisionName>{{x .Urbanization}}</cbc:CitySubdivisionName>
+{{- end}}
+          <cbc:CityName>{{x .Province}}</cbc:CityName>
+          <cbc:CountrySubentity>{{x .Department}}</cbc:CountrySubentity>
+          <cbc:District>{{x .District}}</cbc:District>
+          <cac:AddressLine>
+            <cbc:Line>{{x .Line}}</cbc:Line>
+          </cac:AddressLine>
+          <cac:Country>
+            <cbc:IdentificationCode>{{x (def .CountryCode "PE")}}</cbc:IdentificationCode>
+          </cac:Country>
+        </cac:RegistrationAddress>
+{{- end}}
+      </cac:PartyLegalEntity>
+{{- template "contact" .Company}}
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+{{- end}}
+
+{{- define "clientParty"}}
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="{{x (print .IdentityType)}}">{{x .Number}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Name}}</cbc:RegistrationName>
+{{- with .Address}}
+        <cac:RegistrationAddress>
+{{- if .Ubigeo}}
+          <cbc:ID>{{x .Ubigeo}}</cbc:ID>
+{{- end}}
+          <cac:AddressLine>
+            <cbc:Line>{{x .Line}}</cbc:Line>
+          </cac:AddressLine>
+          <cac:Country>
+            <cbc:IdentificationCode>{{x (def .CountryCode "PE")}}</cbc:IdentificationCode>
+          </cac:Country>
+        </cac:RegistrationAddress>
+{{- end}}
+      </cac:PartyLegalEntity>
+{{- template "contact" .}}
+    </cac:Party>
+{{- end}}
+
+{{- define "customer"}}
+  <cac:AccountingCustomerParty>
+{{- template "clientParty" .Client}}
+  </cac:AccountingCustomerParty>
+{{- end}}
+
+{{- define "seller"}}
+{{- with .Seller}}
+  <cac:SellerSupplierParty>
+{{- template "clientParty" .}}
+  </cac:SellerSupplierParty>
+{{- end}}
+{{- end}}
+
+{{- define "delivery"}}
+{{- with .Delivery}}
+  <cac:Delivery>
+    <cac:DeliveryLocation>
+      <cac:Address>
+        <cbc:ID>{{x .Ubigeo}}</cbc:ID>
+{{- if .Urbanization}}
+        <cbc:CitySubdivisionName>{{x .Urbanization}}</cbc:CitySubdivisionName>
+{{- end}}
+        <cbc:CityName>{{x .Province}}</cbc:CityName>
+        <cbc:CountrySubentity>{{x .Department}}</cbc:CountrySubentity>
+        <cbc:District>{{x .District}}</cbc:District>
+        <cac:AddressLine>
+          <cbc:Line>{{x .Line}}</cbc:Line>
+        </cac:AddressLine>
+        <cac:Country>
+          <cbc:IdentificationCode>{{x (def .CountryCode "PE")}}</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:Address>
+    </cac:DeliveryLocation>
+  </cac:Delivery>
+{{- end}}
+{{- end}}
+
+{{- define "payment"}}
+{{- $cur := .Currency}}
+{{- with .Detraction}}
+  <cac:PaymentMeans>
+    <cbc:ID>Detraccion</cbc:ID>
+    <cbc:PaymentMeansCode>{{x .MeanOfPayment}}</cbc:PaymentMeansCode>
+    <cac:PayeeFinancialAccount>
+      <cbc:ID>{{x .BankAccount}}</cbc:ID>
+    </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+  <cac:PaymentTerms>
+    <cbc:ID>Detraccion</cbc:ID>
+    <cbc:PaymentMeansID>{{x .GoodCode}}</cbc:PaymentMeansID>
+    <cbc:PaymentPercent>{{qty .Percent}}</cbc:PaymentPercent>
+    <cbc:Amount currencyID="PEN">{{amt .Amount}}</cbc:Amount>
+  </cac:PaymentTerms>
+{{- end}}
+{{- with .Perception}}
+  <cac:PaymentTerms>
+    <cbc:ID>Percepcion</cbc:ID>
+    <cbc:Amount currencyID="PEN">{{amt .Total}}</cbc:Amount>
+  </cac:PaymentTerms>
+{{- end}}
+{{- with .PaymentTerms}}
+{{- if .Credit}}
+  <cac:PaymentTerms>
+    <cbc:ID>FormaPago</cbc:ID>
+    <cbc:PaymentMeansID>Credito</cbc:PaymentMeansID>
+    <cbc:Amount currencyID="{{x $cur}}">{{amt .Amount}}</cbc:Amount>
+  </cac:PaymentTerms>
+{{- range $i, $q := .Installments}}
+  <cac:PaymentTerms>
+    <cbc:ID>FormaPago</cbc:ID>
+    <cbc:PaymentMeansID>Cuota{{seq $i}}</cbc:PaymentMeansID>
+    <cbc:Amount currencyID="{{x $cur}}">{{amt $q.Amount}}</cbc:Amount>
+    <cbc:PaymentDueDate>{{date $q.DueDate}}</cbc:PaymentDueDate>
+  </cac:PaymentTerms>
+{{- end}}
+{{- else}}
+  <cac:PaymentTerms>
+    <cbc:ID>FormaPago</cbc:ID>
+    <cbc:PaymentMeansID>Contado</cbc:PaymentMeansID>
+  </cac:PaymentTerms>
+{{- end}}
+{{- end}}
+{{- range .Prepayments}}
+  <cac:PrepaidPayment>
+    <cbc:ID>{{.Index}}</cbc:ID>
+    <cbc:PaidAmount currencyID="{{x $cur}}">{{amt .Total}}</cbc:PaidAmount>
+  </cac:PrepaidPayment>
+{{- end}}
+{{- end}}
+
+{{- define "docAllowances"}}
+{{- $cur := .Currency}}
+{{- range .AllowanceCharges}}
+  <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>{{if .Charge}}true{{else}}false{{end}}</cbc:ChargeIndicator>
+    <cbc:AllowanceChargeReasonCode>{{x (print .Reason)}}</cbc:AllowanceChargeReasonCode>
+{{- if nz .Factor}}
+    <cbc:MultiplierFactorNumeric>{{factor .Factor}}</cbc:MultiplierFactorNumeric>
+{{- end}}
+    <cbc:Amount currencyID="{{x $cur}}">{{amt .Amount}}</cbc:Amount>
+    <cbc:BaseAmount currencyID="{{x $cur}}">{{amt .BaseAmount}}</cbc:BaseAmount>
+  </cac:AllowanceCharge>
+{{- end}}
+{{- with .Perception}}
+  <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>true</cbc:ChargeIndicator>
+    <cbc:AllowanceChargeReasonCode>{{x (print .Regime)}}</cbc:AllowanceChargeReasonCode>
+    <cbc:MultiplierFactorNumeric>{{factor .Factor}}</cbc:MultiplierFactorNumeric>
+    <cbc:Amount currencyID="PEN">{{amt .Amount}}</cbc:Amount>
+    <cbc:BaseAmount currencyID="PEN">{{amt .Base}}</cbc:BaseAmount>
+  </cac:AllowanceCharge>
+{{- end}}
+{{- end}}
+
+{{- define "taxTotal"}}
+{{- $cur := .Currency}}
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .TotalTaxes}}</cbc:TaxAmount>
+{{- range .Subtotals}}
+    <cac:TaxSubtotal>
+{{- if not .NoBase}}
+      <cbc:TaxableAmount currencyID="{{x $cur}}">{{amt .Taxable}}</cbc:TaxableAmount>
+{{- end}}
+      <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .Tax}}</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cac:TaxScheme>
+          <cbc:ID>{{.Scheme.ID}}</cbc:ID>
+          <cbc:Name>{{.Scheme.Name}}</cbc:Name>
+          <cbc:TaxTypeCode>{{.Scheme.Code}}</cbc:TaxTypeCode>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+{{- end}}
+  </cac:TaxTotal>
+{{- end}}
+
+{{- define "lineTail"}}
+{{- $cur := .Currency}}
+    <cac:PricingReference>
+      <cac:AlternativeConditionPrice>
+        <cbc:PriceAmount currencyID="{{x $cur}}">{{price .UnitPrice}}</cbc:PriceAmount>
+        <cbc:PriceTypeCode>{{x (print .PriceType)}}</cbc:PriceTypeCode>
+      </cac:AlternativeConditionPrice>
+    </cac:PricingReference>
+{{- range .AllowanceCharges}}
+    <cac:AllowanceCharge>
+      <cbc:ChargeIndicator>{{if .Charge}}true{{else}}false{{end}}</cbc:ChargeIndicator>
+      <cbc:AllowanceChargeReasonCode>{{x (print .Reason)}}</cbc:AllowanceChargeReasonCode>
+{{- if nz .Factor}}
+      <cbc:MultiplierFactorNumeric>{{factor .Factor}}</cbc:MultiplierFactorNumeric>
+{{- end}}
+      <cbc:Amount currencyID="{{x $cur}}">{{amt .Amount}}</cbc:Amount>
+      <cbc:BaseAmount currencyID="{{x $cur}}">{{amt .BaseAmount}}</cbc:BaseAmount>
+    </cac:AllowanceCharge>
+{{- end}}
+    <cac:TaxTotal>
+      <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .TotalTaxes}}</cbc:TaxAmount>
+{{- if nz .ISC}}
+      <cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="{{x $cur}}">{{amt .ISCBase}}</cbc:TaxableAmount>
+        <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .ISC}}</cbc:TaxAmount>
+        <cac:TaxCategory>
+          <cbc:Percent>{{qty .ISCPercent}}</cbc:Percent>
+          <cbc:TierRange>{{x (print .ISCSystem)}}</cbc:TierRange>
+          <cac:TaxScheme>
+            <cbc:ID>2000</cbc:ID>
+            <cbc:Name>ISC</cbc:Name>
+            <cbc:TaxTypeCode>EXC</cbc:TaxTypeCode>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+{{- end}}
+      <cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="{{x $cur}}">{{amt .TaxBase}}</cbc:TaxableAmount>
+        <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .IGV}}</cbc:TaxAmount>
+        <cac:TaxCategory>
+          <cbc:Percent>{{qty .IGVPercent}}</cbc:Percent>
+          <cbc:TaxExemptionReasonCode>{{x (print .Affectation)}}</cbc:TaxExemptionReasonCode>
+          <cac:TaxScheme>
+            <cbc:ID>{{.Scheme.ID}}</cbc:ID>
+            <cbc:Name>{{.Scheme.Name}}</cbc:Name>
+            <cbc:TaxTypeCode>{{.Scheme.Code}}</cbc:TaxTypeCode>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+{{- if nz .OtherTax}}
+      <cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="{{x $cur}}">{{amt .OtherTaxBase}}</cbc:TaxableAmount>
+        <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .OtherTax}}</cbc:TaxAmount>
+        <cac:TaxCategory>
+          <cbc:Percent>{{qty .OtherTaxPercent}}</cbc:Percent>
+          <cac:TaxScheme>
+            <cbc:ID>9999</cbc:ID>
+            <cbc:Name>OTROS</cbc:Name>
+            <cbc:TaxTypeCode>OTH</cbc:TaxTypeCode>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+{{- end}}
+{{- if nz .ICBPER}}
+      <cac:TaxSubtotal>
+        <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .ICBPER}}</cbc:TaxAmount>
+        <cbc:BaseUnitMeasure unitCode="{{x .Unit}}">{{qty .Quantity}}</cbc:BaseUnitMeasure>
+        <cac:TaxCategory>
+          <cbc:PerUnitAmount currencyID="{{x $cur}}">{{amt .ICBPERFactor}}</cbc:PerUnitAmount>
+          <cac:TaxScheme>
+            <cbc:ID>7152</cbc:ID>
+            <cbc:Name>ICBPER</cbc:Name>
+            <cbc:TaxTypeCode>OTH</cbc:TaxTypeCode>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+{{- end}}
+    </cac:TaxTotal>
+    <cac:Item>
+      <cbc:Description>{{x .Description}}</cbc:Description>
+{{- if .ProductCode}}
+      <cac:SellersItemIdentification>
+        <cbc:ID>{{x .ProductCode}}</cbc:ID>
+      </cac:SellersItemIdentification>
+{{- end}}
+{{- if .GS1Code}}
+      <cac:StandardItemIdentification>
+        <cbc:ID>{{x .GS1Code}}</cbc:ID>
+      </cac:StandardItemIdentification>
+{{- end}}
+{{- if .SunatProductCode}}
+      <cac:CommodityClassification>
+        <cbc:ItemClassificationCode>{{x .SunatProductCode}}</cbc:ItemClassificationCode>
+      </cac:CommodityClassification>
+{{- end}}
+{{- range .Attributes}}
+      <cac:AdditionalItemProperty>
+        <cbc:Name>{{x .Name}}</cbc:Name>
+        <cbc:NameCode>{{x .Code}}</cbc:NameCode>
+{{- if .Value}}
+        <cbc:Value>{{x .Value}}</cbc:Value>
+{{- end}}
+{{- if or .StartDate .EndDate .Duration}}
+        <cac:UsabilityPeriod>
+{{- if .StartDate}}
+          <cbc:StartDate>{{date .StartDate}}</cbc:StartDate>
+{{- end}}
+{{- if .EndDate}}
+          <cbc:EndDate>{{date .EndDate}}</cbc:EndDate>
+{{- end}}
+{{- if .Duration}}
+          <cbc:DurationMeasure unitCode="DAY">{{.Duration}}</cbc:DurationMeasure>
+{{- end}}
+        </cac:UsabilityPeriod>
+{{- end}}
+      </cac:AdditionalItemProperty>
+{{- end}}
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="{{x $cur}}">{{price .UnitValue}}</cbc:PriceAmount>
+    </cac:Price>
+{{- end}}
+
+{{- define "noteMonetary"}}
+{{- $cur := .Currency}}
+{{- if nz .ChargeTotal}}
+    <cbc:ChargeTotalAmount currencyID="{{x $cur}}">{{amt .ChargeTotal}}</cbc:ChargeTotalAmount>
+{{- end}}
+{{- if nz .Rounding}}
+    <cbc:PayableRoundingAmount currencyID="{{x $cur}}">{{amt .Rounding}}</cbc:PayableRoundingAmount>
+{{- end}}
+    <cbc:PayableAmount currencyID="{{x $cur}}">{{amt .Payable}}</cbc:PayableAmount>
+{{- end}}
+
+{{- define "noteHead"}}
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>2.0</cbc:CustomizationID>
+  <cbc:ID>{{x .ID}}</cbc:ID>
+  <cbc:IssueDate>{{date .IssueDate}}</cbc:IssueDate>
+  <cbc:IssueTime>{{time .IssueDate}}</cbc:IssueTime>
+{{- range .Legends}}
+  <cbc:Note languageLocaleID="{{x (print .Code)}}">{{x .Value}}</cbc:Note>
+{{- end}}
+  <cbc:DocumentCurrencyCode>{{x .Currency}}</cbc:DocumentCurrencyCode>
+{{- with .Discrepancy}}
+  <cac:DiscrepancyResponse>
+    <cbc:ReferenceID>{{x .Reference}}</cbc:ReferenceID>
+    <cbc:ResponseCode>{{x .Code}}</cbc:ResponseCode>
+    <cbc:Description>{{x .Description}}</cbc:Description>
+  </cac:DiscrepancyResponse>
+{{- end}}
+{{- template "orderRef" .}}
+{{- with .Billing}}
+  <cac:BillingReference>
+    <cac:InvoiceDocumentReference>
+      <cbc:ID>{{x .Number}}</cbc:ID>
+      <cbc:DocumentTypeCode>{{x .Type}}</cbc:DocumentTypeCode>
+    </cac:InvoiceDocumentReference>
+  </cac:BillingReference>
+{{- end}}
+{{- template "despatchRefs" .}}
+{{- template "additionalRefs" .}}
+{{- template "signature" .}}
+{{- template "supplier" .}}
+{{- template "customer" .}}
+{{- template "payment" .}}
+{{- template "taxTotal" .}}
+{{- end}}
