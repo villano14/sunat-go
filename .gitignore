@@ -2,3 +2,4 @@
 *.p12
 *.key
 /coverage.out
+/testdata-xsd/
