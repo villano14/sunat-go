@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DespatchAdvice xmlns="urn:oasis:names:specification:ubl:schema:xsd:DespatchAdvice-2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+  <ext:UBLExtensions>
+    <ext:UBLExtension>
+      <ext:ExtensionContent/>
+    </ext:UBLExtension>
+  </ext:UBLExtensions>
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>2.0</cbc:CustomizationID>
+  <cbc:ID>{{x .ID}}</cbc:ID>
+  <cbc:IssueDate>{{date .IssueDate}}</cbc:IssueDate>
+  <cbc:IssueTime>{{time .IssueDate}}</cbc:IssueTime>
+  <cbc:DespatchAdviceTypeCode listAgencyName="PE:SUNAT" listName="Tipo de Documento" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo01">{{x (print .Type)}}</cbc:DespatchAdviceTypeCode>
+{{- if .Note}}
+  <cbc:Note>{{x .Note}}</cbc:Note>
+{{- end}}
+{{- range .RelatedDocs}}
+  <cac:AdditionalDocumentReference>
+    <cbc:ID>{{x .Number}}</cbc:ID>
+    <cbc:DocumentTypeCode listAgencyName="PE:SUNAT" listName="Documento relacionado al transporte" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo61">{{x (print .Type)}}</cbc:DocumentTypeCode>
+    <cbc:DocumentType>{{x .Description}}</cbc:DocumentType>
+{{- if .IssuerRUC}}
+    <cac:IssuerParty>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .IssuerRUC}}</cbc:ID>
+      </cac:PartyIdentification>
+    </cac:IssuerParty>
+{{- end}}
+  </cac:AdditionalDocumentReference>
+{{- end}}
+  <cac:Signature>
+    <cbc:ID>SIGN{{x .Company.RUC}}</cbc:ID>
+    <cac:SignatoryParty>
+      <cac:PartyIdentification>
+        <cbc:ID>{{x .Company.RUC}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>{{x .Company.LegalName}}</cbc:Name>
+      </cac:PartyName>
+    </cac:SignatoryParty>
+    <cac:DigitalSignatureAttachment>
+      <cac:ExternalReference>
+        <cbc:URI>#{{.SignatureID}}</cbc:URI>
+      </cac:ExternalReference>
+    </cac:DigitalSignatureAttachment>
+  </cac:Signature>
+  <cac:DespatchSupplierParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .Company.RUC}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Company.LegalName}}</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:DespatchSupplierParty>
+  <cac:DeliveryCustomerParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="{{x (print .Recipient.IdentityType)}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .Recipient.Number}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Recipient.Name}}</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:DeliveryCustomerParty>
+{{- with .Buyer}}
+  <cac:BuyerCustomerParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="{{x (print .IdentityType)}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .Number}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Name}}</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:BuyerCustomerParty>
+{{- end}}
+{{- if .IsSender}}
+{{- with .Supplier}}
+  <cac:SellerSupplierParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="{{x (print .IdentityType)}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .Number}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Name}}</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:SellerSupplierParty>
+{{- end}}
+{{- end}}
+{{- with .Shipment}}
+  <cac:Shipment>
+    <cbc:ID>SUNAT_Envio</cbc:ID>
+{{- if $.IsSender}}
+    <cbc:HandlingCode listAgencyName="PE:SUNAT" listName="Motivo de traslado" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo20">{{x (print .TransferReason)}}</cbc:HandlingCode>
+{{- end}}
+{{- if .TransferDescription}}
+    <cbc:HandlingInstructions>{{x .TransferDescription}}</cbc:HandlingInstructions>
+{{- end}}
+{{- if .WeightSupport}}
+    <cbc:Information>{{x .WeightSupport}}</cbc:Information>
+{{- end}}
+    <cbc:GrossWeightMeasure unitCode="{{x $.WeightUnit}}">{{$.GrossWeight}}</cbc:GrossWeightMeasure>
+{{- if $.ItemsWeight}}
+    <cbc:NetWeightMeasure unitCode="KGM">{{$.ItemsWeight}}</cbc:NetWeightMeasure>
+{{- end}}
+{{- if .Packages}}
+    <cbc:TotalTransportHandlingUnitQuantity>{{.Packages}}</cbc:TotalTransportHandlingUnitQuantity>
+{{- end}}
+{{- range $.Indicators}}
+    <cbc:SpecialInstructions>{{x .}}</cbc:SpecialInstructions>
+{{- end}}
+    <cac:ShipmentStage>
+{{- if $.IsSender}}
+      <cbc:TransportModeCode listName="Modalidad de traslado" listAgencyName="PE:SUNAT" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo18">{{x (print .TransportMode)}}</cbc:TransportModeCode>
+{{- end}}
+{{- if .StartDate}}
+      <cac:TransitPeriod>
+        <cbc:StartDate>{{date .StartDate}}</cbc:StartDate>
+      </cac:TransitPeriod>
+{{- end}}
+{{- with .Carrier}}
+      <cac:CarrierParty>
+        <cac:PartyIdentification>
+          <cbc:ID schemeID="{{x (print .IdentityType)}}">{{x .Number}}</cbc:ID>
+        </cac:PartyIdentification>
+        <cac:PartyLegalEntity>
+          <cbc:RegistrationName>{{x .Name}}</cbc:RegistrationName>
+{{- if .MTCRegistry}}
+          <cbc:CompanyID>{{x .MTCRegistry}}</cbc:CompanyID>
+{{- end}}
+        </cac:PartyLegalEntity>
+      </cac:CarrierParty>
+{{- end}}
+{{- if .HandoverDate}}
+      <cac:LoadingTransportEvent>
+        <cbc:OccurrenceDate>{{date .HandoverDate}}</cbc:OccurrenceDate>
+      </cac:LoadingTransportEvent>
+{{- end}}
+{{- range .Drivers}}
+      <cac:DriverPerson>
+        <cbc:ID schemeID="{{x (print .IdentityType)}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .Number}}</cbc:ID>
+        <cbc:FirstName>{{x .FirstName}}</cbc:FirstName>
+        <cbc:FamilyName>{{x .LastName}}</cbc:FamilyName>
+        <cbc:JobTitle>{{x (print .Type)}}</cbc:JobTitle>
+        <cac:IdentityDocumentReference>
+          <cbc:ID>{{x .License}}</cbc:ID>
+        </cac:IdentityDocumentReference>
+      </cac:DriverPerson>
+{{- end}}
+    </cac:ShipmentStage>
+    <cac:Delivery>
+      <cac:DeliveryAddress>
+        <cbc:ID schemeAgencyName="PE:INEI" schemeName="Ubigeos">{{x .Arrival.Ubigeo}}</cbc:ID>
+{{- if .Arrival.EstablishmentCode}}
+        <cbc:AddressTypeCode listID="{{x .Arrival.RUC}}">{{x .Arrival.EstablishmentCode}}</cbc:AddressTypeCode>
+{{- end}}
+        <cac:AddressLine>
+          <cbc:Line>{{x .Arrival.Line}}</cbc:Line>
+        </cac:AddressLine>
+      </cac:DeliveryAddress>
+      <cac:Despatch>
+        <cac:DespatchAddress>
+          <cbc:ID schemeAgencyName="PE:INEI" schemeName="Ubigeos">{{x .Departure.Ubigeo}}</cbc:ID>
+{{- if .Departure.EstablishmentCode}}
+          <cbc:AddressTypeCode listID="{{x .Departure.RUC}}">{{x .Departure.EstablishmentCode}}</cbc:AddressTypeCode>
+{{- end}}
+          <cac:AddressLine>
+            <cbc:Line>{{x .Departure.Line}}</cbc:Line>
+          </cac:AddressLine>
+        </cac:DespatchAddress>
+{{- if $.IsCarrier}}
+{{- with $.Shipper}}
+        <cac:DespatchParty>
+          <cac:PartyIdentification>
+            <cbc:ID schemeID="{{x (print .IdentityType)}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .Number}}</cbc:ID>
+          </cac:PartyIdentification>
+          <cac:PartyLegalEntity>
+            <cbc:RegistrationName>{{x .Name}}</cbc:RegistrationName>
+          </cac:PartyLegalEntity>
+        </cac:DespatchParty>
+{{- end}}
+{{- end}}
+      </cac:Despatch>
+    </cac:Delivery>
+{{- range $i, $c := .Containers}}
+    <cac:TransportHandlingUnit>
+      <cac:Package>
+        <cbc:ID>{{add1 $i}}</cbc:ID>
+        <cbc:TraceID>{{x $c}}</cbc:TraceID>
+      </cac:Package>
+    </cac:TransportHandlingUnit>
+{{- end}}
+{{- with .Vehicle}}
+    <cac:TransportHandlingUnit>
+      <cac:TransportEquipment>
+        <cbc:ID>{{x .Plate}}</cbc:ID>
+{{- if .CirculationCard}}
+        <cac:ApplicableTransportMeans>
+          <cbc:RegistrationNationalityID>{{x .CirculationCard}}</cbc:RegistrationNationalityID>
+        </cac:ApplicableTransportMeans>
+{{- end}}
+{{- range .Secondary}}
+        <cac:AttachedTransportEquipment>
+          <cbc:ID>{{x .Plate}}</cbc:ID>
+{{- if .CirculationCard}}
+          <cac:ApplicableTransportMeans>
+            <cbc:RegistrationNationalityID>{{x .CirculationCard}}</cbc:RegistrationNationalityID>
+          </cac:ApplicableTransportMeans>
+{{- end}}
+{{- if .AuthorizationCode}}
+          <cac:ShipmentDocumentReference>
+            <cbc:ID schemeID="{{x .AuthorizerCode}}" schemeName="Entidad Autorizadora" schemeAgencyName="PE:SUNAT">{{x .AuthorizationCode}}</cbc:ID>
+          </cac:ShipmentDocumentReference>
+{{- end}}
+        </cac:AttachedTransportEquipment>
+{{- end}}
+{{- if .AuthorizationCode}}
+        <cac:ShipmentDocumentReference>
+          <cbc:ID schemeID="{{x .AuthorizerCode}}" schemeName="Entidad Autorizadora" schemeAgencyName="PE:SUNAT">{{x .AuthorizationCode}}</cbc:ID>
+        </cac:ShipmentDocumentReference>
+{{- end}}
+      </cac:TransportEquipment>
+    </cac:TransportHandlingUnit>
+{{- end}}
+{{- if .Port}}
+    <cac:FirstArrivalPortLocation>
+      <cbc:ID schemeAgencyName="PE:SUNAT" schemeName="Puertos" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo63">{{x .Port.Code}}</cbc:ID>
+      <cbc:LocationTypeCode>1</cbc:LocationTypeCode>
+      <cbc:Name>{{x .Port.Name}}</cbc:Name>
+    </cac:FirstArrivalPortLocation>
+{{- else if .Airport}}
+    <cac:FirstArrivalPortLocation>
+      <cbc:ID schemeAgencyName="PE:SUNAT" schemeName="Aeropuertos" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo64">{{x .Airport.Code}}</cbc:ID>
+      <cbc:LocationTypeCode>2</cbc:LocationTypeCode>
+      <cbc:Name>{{x .Airport.Name}}</cbc:Name>
+    </cac:FirstArrivalPortLocation>
+{{- end}}
+  </cac:Shipment>
+{{- end}}
+{{- range $i, $l := .Lines}}
+  <cac:DespatchLine>
+    <cbc:ID>{{add1 $i}}</cbc:ID>
+    <cbc:DeliveredQuantity unitCode="{{x $l.Unit}}">{{qty $l.Quantity}}</cbc:DeliveredQuantity>
+    <cac:OrderLineReference>
+      <cbc:LineID>{{add1 $i}}</cbc:LineID>
+    </cac:OrderLineReference>
+    <cac:Item>
+      <cbc:Description>{{x $l.Description}}</cbc:Description>
+{{- if $l.ProductCode}}
+      <cac:SellersItemIdentification>
+        <cbc:ID>{{x $l.ProductCode}}</cbc:ID>
+      </cac:SellersItemIdentification>
+{{- end}}
+{{- if $l.SunatCode}}
+      <cac:CommodityClassification>
+        <cbc:ItemClassificationCode listID="UNSPSC" listAgencyName="GS1 US" listName="Item Classification">{{x $l.SunatCode}}</cbc:ItemClassificationCode>
+      </cac:CommodityClassification>
+{{- end}}
+{{- range $l.Attributes}}
+      <cac:AdditionalItemProperty>
+        <cbc:Name>{{x .Name}}</cbc:Name>
+        <cbc:NameCode>{{x .Code}}</cbc:NameCode>
+{{- if .Value}}
+        <cbc:Value>{{x .Value}}</cbc:Value>
+{{- end}}
+      </cac:AdditionalItemProperty>
+{{- end}}
+    </cac:Item>
+  </cac:DespatchLine>
+{{- end}}
+</DespatchAdvice>
