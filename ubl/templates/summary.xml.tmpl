@@ -53,6 +53,15 @@
       </cac:InvoiceDocumentReference>
     </cac:BillingReference>
 {{- end}}
+{{- with $l.Perception}}
+    <sac:SUNATPerceptionSummaryDocumentReference>
+      <sac:SUNATPerceptionSystemCode>{{x (print .Regime)}}</sac:SUNATPerceptionSystemCode>
+      <sac:SUNATPerceptionPercent>{{amt .Rate}}</sac:SUNATPerceptionPercent>
+      <cbc:TotalInvoiceAmount currencyID="{{x $cur}}">{{amt .Amount}}</cbc:TotalInvoiceAmount>
+      <sac:SUNATTotalCashed currencyID="{{x $cur}}">{{amt .TotalCollected}}</sac:SUNATTotalCashed>
+      <cbc:TaxableAmount currencyID="{{x $cur}}">{{amt .TaxableAmount}}</cbc:TaxableAmount>
+    </sac:SUNATPerceptionSummaryDocumentReference>
+{{- end}}
     <cac:Status>
       <cbc:ConditionCode>{{x (print $l.Status)}}</cbc:ConditionCode>
     </cac:Status>

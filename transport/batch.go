@@ -11,7 +11,8 @@ import (
 	"unicode"
 )
 
-// ConsultProduction is the billConsultService endpoint that serves getStatusCdr.
+// ConsultProduction is the billConsultService endpoint for document status
+// (getStatus) and CDR recovery (getStatusCdr), not ticket polling.
 //
 // SUNAT publishes no beta consult service (its list of web services has a beta
 // billService only), so a SOAPClient built with BillBeta has no consult
@@ -20,7 +21,7 @@ import (
 // of the issuer, so production calls require real ones.
 const ConsultProduction = "https://e-factura.sunat.gob.pe/ol-it-wsconscpegem/billConsultService"
 
-// ErrNoConsultEndpoint is returned by GetStatusCdr when the client has no
+// ErrNoConsultEndpoint is returned by GetStatusCdr or GetStatusCpe when the client has no
 // billConsultService endpoint, as happens with the beta billService.
 var ErrNoConsultEndpoint = errors.New("transport: no billConsultService endpoint configured")
 
@@ -81,13 +82,28 @@ type ConsultTransport interface {
 	GetStatusCdr(ctx context.Context, ruc, docType, series string, number int64) (Status, error)
 }
 
+// CPEStatus is the status-only answer from billConsultService. Codes retain
+// leading zeros: 0001 accepted, 0002 rejected, 0003 voided, 0011 absent.
+// Unknown codes are preserved. This answer is not a CDR or a ticket status.
+type CPEStatus struct {
+	Code    string
+	Message string
+}
+
+// CPEStatusTransport is an optional capability for document status queries.
+// It does not extend ConsultTransport, so existing implementations remain valid.
+type CPEStatusTransport interface {
+	GetStatusCpe(ctx context.Context, ruc, docType, series string, number int64) (CPEStatus, error)
+}
+
 var (
-	_ BatchTransport   = (*SOAPClient)(nil)
-	_ ConsultTransport = (*SOAPClient)(nil)
+	_ BatchTransport     = (*SOAPClient)(nil)
+	_ ConsultTransport   = (*SOAPClient)(nil)
+	_ CPEStatusTransport = (*SOAPClient)(nil)
 )
 
 // WithConsultEndpoint overrides the billConsultService endpoint used by
-// GetStatusCdr. The default is ConsultProduction when the client targets
+// GetStatusCdr and GetStatusCpe. The default is ConsultProduction when the client targets
 // BillProduction, and none otherwise.
 func WithConsultEndpoint(endpoint string) Option {
 	return func(s *SOAPClient) { s.consultEndpoint = endpoint }
@@ -174,20 +190,7 @@ func (c *SOAPClient) GetStatus(ctx context.Context, ticket string) (Status, erro
 // documents it for Factura (01) and notes (07, 08). Status.Content holds the
 // zipped CDR when SUNAT has one.
 func (c *SOAPClient) GetStatusCdr(ctx context.Context, ruc, docType, series string, number int64) (Status, error) {
-	if c.consultEndpoint == "" {
-		return Status{}, ErrNoConsultEndpoint
-	}
-	// numeroComprobante is xsd:int in the SUNAT schema.
-	if number < 1 || number > math.MaxInt32 {
-		return Status{}, fmt.Errorf("transport: getStatusCdr number %d out of range", number)
-	}
-	body := `<ser:getStatusCdr>` +
-		`<rucComprobante>` + escape(ruc) + `</rucComprobante>` +
-		`<tipoComprobante>` + escape(docType) + `</tipoComprobante>` +
-		`<serieComprobante>` + escape(series) + `</serieComprobante>` +
-		`<numeroComprobante>` + strconv.FormatInt(number, 10) + `</numeroComprobante>` +
-		`</ser:getStatusCdr>`
-	env, err := c.callEndpoint(ctx, c.consultEndpoint, "urn:getStatusCdr", body)
+	env, err := c.consultQuery(ctx, "getStatusCdr", ruc, docType, series, number)
 	if err != nil {
 		return Status{}, err
 	}
@@ -195,4 +198,43 @@ func (c *SOAPClient) GetStatusCdr(ctx context.Context, ruc, docType, series stri
 		return Status{}, errors.New("transport: getStatusCdr response has no statusCdr")
 	}
 	return env.Body.GetStatusCdr.status("getStatusCdr")
+}
+
+// GetStatusCpe asks billConsultService for a document's status, without CDR
+// recovery. SUNAT documents Factura (01) and F-series notes (07, 08). It is
+// unrelated to GetStatus(ticket) on billService. Optional response content is
+// deliberately ignored: it is not evidence of acceptance or a CDR to decode.
+func (c *SOAPClient) GetStatusCpe(ctx context.Context, ruc, docType, series string, number int64) (CPEStatus, error) {
+	env, err := c.consultQuery(ctx, "getStatus", ruc, docType, series, number)
+	if err != nil {
+		return CPEStatus{}, err
+	}
+	b := env.Body.GetStatus
+	if b == nil {
+		return CPEStatus{}, errors.New("transport: getStatusCpe response has no status")
+	}
+	code := strings.TrimSpace(b.StatusCode)
+	if code == "" {
+		return CPEStatus{}, errors.New("transport: getStatusCpe response has no statusCode")
+	}
+	return CPEStatus{Code: code, Message: strings.TrimSpace(b.Message)}, nil
+}
+
+// consultQuery keeps the existing CDR query's validation and wire format in
+// one place for both consult operations. op is an internal SOAP operation name.
+func (c *SOAPClient) consultQuery(ctx context.Context, op, ruc, docType, series string, number int64) (*envelope, error) {
+	if c.consultEndpoint == "" {
+		return nil, ErrNoConsultEndpoint
+	}
+	// numeroComprobante is xsd:int in the SUNAT schema.
+	if number < 1 || number > math.MaxInt32 {
+		return nil, fmt.Errorf("transport: %s number %d out of range", op, number)
+	}
+	body := `<ser:` + op + `>` +
+		`<rucComprobante>` + escape(ruc) + `</rucComprobante>` +
+		`<tipoComprobante>` + escape(docType) + `</tipoComprobante>` +
+		`<serieComprobante>` + escape(series) + `</serieComprobante>` +
+		`<numeroComprobante>` + strconv.FormatInt(number, 10) + `</numeroComprobante>` +
+		`</ser:` + op + `>`
+	return c.callEndpoint(ctx, c.consultEndpoint, "urn:"+op, body)
 }

@@ -22,6 +22,18 @@ func (r SummaryReference) ID() string {
 	return r.Series + "-" + strconv.FormatInt(r.Number, 10)
 }
 
+// SummaryPerception is the optional perception reference in a summary line.
+// The caller supplies the rate and amounts; they are rendered with two decimals
+// in the summary's currency, without calculating or reconciling totals.
+// It is not a standalone Comprobante de Percepción (40).
+type SummaryPerception struct {
+	Regime         catalog.PerceptionRegime // Catalog 22, e.g. 01
+	Rate           decimal.Decimal         // Percentage, e.g. 2 for 2%
+	Amount         decimal.Decimal         // Importe de la percepción
+	TotalCollected decimal.Decimal         // Total cobrado, incluida la percepción
+	TaxableAmount  decimal.Decimal         // Base imponible de la percepción
+}
+
 // SummaryLine reports one boleta (03) or note (07, 08) in a Resumen diario.
 //
 // Amounts are supplied by the caller. Zero amounts are omitted, except that a
@@ -35,8 +47,9 @@ type SummaryLine struct {
 	ClientIdentityType catalog.IdentityType
 	ClientNumber       string
 
-	Reference *SummaryReference // Required by SUNAT for notes (07, 08)
-	Status    catalog.SummaryStatus
+	Reference  *SummaryReference // Required by SUNAT for notes (07, 08)
+	Status     catalog.SummaryStatus
+	Perception *SummaryPerception // Optional; nil preserves the non-perception XML
 
 	Total            decimal.Decimal // Importe total del comprobante
 	TaxedAmount      decimal.Decimal // Operaciones gravadas

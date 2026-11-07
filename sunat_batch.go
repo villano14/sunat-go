@@ -20,6 +20,46 @@ var ErrBatchUnsupported = errors.New("sunat: transport does not support sendSumm
 // recover CDRs (it does not implement transport.ConsultTransport).
 var ErrConsultUnsupported = errors.New("sunat: transport does not support getStatusCdr")
 
+// ErrStatusConsultUnsupported means the transport lacks the optional
+// transport.CPEStatusTransport capability. CDR recovery remains independent.
+var ErrStatusConsultUnsupported = errors.New("sunat: transport does not support document getStatus")
+
+// DocumentStatusResult is the status-only consult answer, not a CDR or ticket.
+// Unknown codes are retained and none of the predicates match them.
+type DocumentStatusResult struct {
+	StatusCode string
+	Message    string
+}
+
+// Accepted reports exactly SUNAT's document status 0001, not CDR acceptance.
+func (r DocumentStatusResult) Accepted() bool { return r.StatusCode == "0001" }
+
+// Rejected reports exactly SUNAT's document status 0002.
+func (r DocumentStatusResult) Rejected() bool { return r.StatusCode == "0002" }
+
+// Voided reports exactly SUNAT's document status 0003.
+func (r DocumentStatusResult) Voided() bool { return r.StatusCode == "0003" }
+
+// NotFound reports exactly SUNAT's document status 0011.
+func (r DocumentStatusResult) NotFound() bool { return r.StatusCode == "0011" }
+
+// QueryStatus queries document status on billConsultService, without fetching
+// or decoding a CDR. SUNAT documents Factura (01) and F-series notes (07, 08).
+// Use Status for batch tickets and QueryCDR for CDR recovery. There is no beta
+// consult endpoint. The optional transport.CPEStatusTransport is required;
+// otherwise the error wraps ErrStatusConsultUnsupported.
+func (c *Client) QueryStatus(ctx context.Context, ruc string, docType catalog.DocumentType, series string, number int64) (DocumentStatusResult, error) {
+	ct, ok := c.tr.(transport.CPEStatusTransport)
+	if !ok {
+		return DocumentStatusResult{}, fmt.Errorf("sunat: query status: %w", ErrStatusConsultUnsupported)
+	}
+	st, err := ct.GetStatusCpe(ctx, ruc, string(docType), series, number)
+	if err != nil {
+		return DocumentStatusResult{}, fmt.Errorf("sunat: query status: %w", err)
+	}
+	return DocumentStatusResult{StatusCode: st.Code, Message: st.Message}, nil
+}
+
 // BatchResult holds the signed XML of a Resumen diario or Comunicación de baja
 // and the ticket SUNAT issued for it.
 type BatchResult struct {

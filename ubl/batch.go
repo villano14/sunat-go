@@ -79,6 +79,11 @@ func Summary(s model.Summary) ([]byte, error) {
 		if !l.Status.Valid() {
 			return nil, fmt.Errorf("ubl: summary line %d: unsupported status %q", i+1, string(l.Status))
 		}
+		if l.Perception != nil {
+			if _, err := catalog.PerceptionRate(l.Perception.Regime); err != nil {
+				return nil, fmt.Errorf("ubl: summary line %d: %w", i+1, err)
+			}
+		}
 		v.Lines = append(v.Lines, batchSummaryLineView{
 			SummaryLine: l,
 			Payments:    batchPayments(l),
