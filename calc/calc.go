@@ -1,6 +1,6 @@
-// Package calc computes the amounts SUNAT documents require, so callers do not
-// have to: the values, taxes and totals of each line (Line) and of a whole
-// Factura, Boleta or Nota (Totals).
+// Package calc computes SUNAT document lines through Line and offers opt-in
+// document aggregation through Totals. Neither helper is called implicitly by
+// model, rendering, building or sending APIs; manual amounts remain supported.
 //
 // All money is shopspring/decimal. Rounding rules, which follow SUNAT's
 // validation tolerances and Greenter's behaviour:
@@ -12,14 +12,12 @@
 //     using the already rounded 10-decimal unit value.
 //   - Line IGV is round2(line base * rate): it is computed from the rounded
 //     base, never from the unrounded product.
-//   - Document totals are plain sums of the rounded line amounts. The only
-//     recomputed figure is the IGV when a document-level discount or charge
-//     changes the taxable base: then IGV = round2(new taxed base * rate).
 //
 // Free operations (transferencias gratuitas, Affectation.Free) carry a
-// reference value and, for taxed ones, a notional IGV in the line, but they
-// are accumulated apart (FreeAmount, FreeIGV) and never contribute to
-// LineExtension, TotalTaxes or Payable.
+// reference value and, for taxed ones, a notional IGV in the line. Totals keeps
+// them separate in FreeAmount/FreeIGV, outside collectible taxes and Payable.
+// Totals sums already-cent-rounded amounts with explicit non-base adjustments;
+// it does not allocate base-changing global adjustments or infer tax policy.
 package calc
 
 import (
@@ -75,7 +73,7 @@ type LineInput struct {
 	// DiscountReason is catalog.DiscountItemTaxBase (00, the default) when the
 	// discount reduces the taxable base, or catalog.DiscountItem (01) when it
 	// does not; in that case the line value and taxes are untouched and the
-	// discount is deducted from the document total as AllowanceTotal.
+	// caller must deduct the discount from the document total as AllowanceTotal.
 	DiscountFactor decimal.Decimal
 	DiscountAmount decimal.Decimal
 	DiscountReason catalog.AllowanceChargeReason
