@@ -27,7 +27,7 @@ var ErrNoConsultEndpoint = errors.New("transport: no billConsultService endpoint
 
 // Ticket status codes returned by getStatus (the ticket flow).
 const (
-	TicketProcessed = "0"  // Processed successfully; Content holds the CDR.
+	TicketProcessed = "0"  // Processed successfully; Content holds the response archive.
 	TicketInProcess = "98" // Still processing; no content yet.
 	TicketErrors    = "99" // Processed with errors; Content may hold a rejecting CDR.
 )
@@ -36,7 +36,7 @@ const (
 type Status struct {
 	Code    string // statusCode as SUNAT sent it, e.g. "0", "98", "99", "0004"
 	Message string // statusMessage; only the consult service sends one
-	Content []byte // zipped CDR; empty when SUNAT sent none
+	Content []byte // raw ZIP: CDR, or per-document CDRs/report for packs; empty when absent
 }
 
 // number returns Code as an integer so "98" and "0098" compare equal.
@@ -76,6 +76,13 @@ type BatchTransport interface {
 	GetStatus(ctx context.Context, ticket string) (Status, error)
 }
 
+// PackTransport is an optional sendPack capability, independent of
+// BatchTransport. Callers prepare the ZIP of signed XML documents themselves.
+// SOAPClient.GetStatus polls the returned ticket without parsing its archive.
+type PackTransport interface {
+	SendPack(ctx context.Context, fileName string, zipContent []byte) (ticket string, err error)
+}
+
 // ConsultTransport recovers the CDR of a document already sent.
 type ConsultTransport interface {
 	// GetStatusCdr asks billConsultService for the CDR of a comprobante.
@@ -98,6 +105,7 @@ type CPEStatusTransport interface {
 
 var (
 	_ BatchTransport     = (*SOAPClient)(nil)
+	_ PackTransport      = (*SOAPClient)(nil)
 	_ ConsultTransport   = (*SOAPClient)(nil)
 	_ CPEStatusTransport = (*SOAPClient)(nil)
 )
@@ -168,8 +176,27 @@ func (c *SOAPClient) SendSummary(ctx context.Context, fileName string, signedXML
 	return strings.TrimSpace(env.Body.SendSummary.Ticket), nil
 }
 
-// GetStatus asks SUNAT for the state of a ticket returned by SendSummary.
-// Status.InProcess means poll again; Status.Done means Content holds the CDR.
+// SendPack sends a caller-prepared ZIP of signed XML documents with sendPack
+// and returns the ticket to poll with GetStatus. fileName is the complete ZIP
+// filename (including .zip); zipContent is base64-encoded unchanged, not zipped
+// again. This method does not build, sign or validate the archive's documents.
+func (c *SOAPClient) SendPack(ctx context.Context, fileName string, zipContent []byte) (string, error) {
+	body := `<ser:sendPack><fileName>` + escape(fileName) + `</fileName><contentFile>` +
+		base64.StdEncoding.EncodeToString(zipContent) + `</contentFile></ser:sendPack>`
+	env, err := c.call(ctx, "urn:sendPack", body)
+	if err != nil {
+		return "", err
+	}
+	if env.Body.SendPack == nil || strings.TrimSpace(env.Body.SendPack.Ticket) == "" {
+		return "", errors.New("transport: sendPack response has no ticket")
+	}
+	return strings.TrimSpace(env.Body.SendPack.Ticket), nil
+}
+
+// GetStatus asks SUNAT for the state of a ticket returned by SendSummary or
+// SendPack. Status.InProcess means poll again. Content is the raw response ZIP;
+// a pack may contain multiple per-document CDRs and a report. Done alone does
+// not establish that every document was accepted, or that content is present.
 // SUNAT-side failures such as an unknown ticket arrive as *Error.
 func (c *SOAPClient) GetStatus(ctx context.Context, ticket string) (Status, error) {
 	if strings.TrimSpace(ticket) == "" {

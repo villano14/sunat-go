@@ -122,6 +122,9 @@ type envelope struct {
 		SendSummary *struct {
 			Ticket string `xml:"ticket"`
 		} `xml:"sendSummaryResponse"`
+		SendPack *struct {
+			Ticket string `xml:"ticket"`
+		} `xml:"sendPackResponse"`
 		GetStatus    *statusBody `xml:"getStatusResponse>status"`
 		GetStatusCdr *statusBody `xml:"getStatusCdrResponse>statusCdr"`
 	} `xml:"Body"`
