@@ -62,11 +62,14 @@ func (e *HTTPError) Error() string {
 	return fmt.Sprintf("transport: HTTP %d", e.StatusCode)
 }
 
-// SOAPClient is a Transport for the SUNAT billService.
+// SOAPClient is a Transport for the SUNAT billService. It also implements
+// BatchTransport (sendSummary, getStatus) on the same endpoint and
+// ConsultTransport (getStatusCdr) on the billConsultService endpoint.
 type SOAPClient struct {
-	endpoint string
-	creds    Credentials
-	http     *http.Client
+	endpoint        string
+	consultEndpoint string // billConsultService; see ConsultProduction
+	creds           Credentials
+	http            *http.Client
 }
 
 // Option configures a SOAPClient.
@@ -77,7 +80,7 @@ func WithHTTPClient(c *http.Client) Option { return func(s *SOAPClient) { s.http
 
 // New returns a client for the given endpoint, e.g. BillBeta.
 func New(endpoint string, creds Credentials, opts ...Option) *SOAPClient {
-	c := &SOAPClient{endpoint: endpoint, creds: creds, http: &http.Client{Timeout: 60 * time.Second}}
+	c := &SOAPClient{endpoint: endpoint, consultEndpoint: defaultConsultEndpoint(endpoint), creds: creds, http: &http.Client{Timeout: 60 * time.Second}}
 	for _, o := range opts {
 		o(c)
 	}
@@ -116,10 +119,22 @@ type envelope struct {
 		SendBill *struct {
 			ApplicationResponse string `xml:"applicationResponse"`
 		} `xml:"sendBillResponse"`
+		SendSummary *struct {
+			Ticket string `xml:"ticket"`
+		} `xml:"sendSummaryResponse"`
+		GetStatus    *statusBody `xml:"getStatusResponse>status"`
+		GetStatusCdr *statusBody `xml:"getStatusCdrResponse>statusCdr"`
 	} `xml:"Body"`
 }
 
+// call posts a SOAP request to the billService endpoint.
 func (c *SOAPClient) call(ctx context.Context, action, body string) (*envelope, error) {
+	return c.callEndpoint(ctx, c.endpoint, action, body)
+}
+
+// callEndpoint posts a SOAP request to endpoint. billService and
+// billConsultService share the envelope, WS-Security header and error mapping.
+func (c *SOAPClient) callEndpoint(ctx context.Context, endpoint, action, body string) (*envelope, error) {
 	payload := `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://service.sunat.gob.pe" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">` +
 		`<soapenv:Header><wsse:Security><wsse:UsernameToken>` +
 		`<wsse:Username>` + escape(c.creds.RUC+c.creds.User) + `</wsse:Username>` +
@@ -127,7 +142,7 @@ func (c *SOAPClient) call(ctx context.Context, action, body string) (*envelope, 
 		`</wsse:UsernameToken></wsse:Security></soapenv:Header>` +
 		`<soapenv:Body>` + body + `</soapenv:Body></soapenv:Envelope>`
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, strings.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("transport: build request: %w", err)
 	}

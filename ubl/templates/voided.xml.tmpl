@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VoidedDocuments xmlns="urn:sunat:names:specification:ubl:peru:schema:xsd:VoidedDocuments-1" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2" xmlns:sac="urn:sunat:names:specification:ubl:peru:schema:xsd:SunatAggregateComponents-1" xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+  <ext:UBLExtensions>
+    <ext:UBLExtension>
+      <ext:ExtensionContent/>
+    </ext:UBLExtension>
+  </ext:UBLExtensions>
+  <cbc:UBLVersionID>2.0</cbc:UBLVersionID>
+  <cbc:CustomizationID>1.0</cbc:CustomizationID>
+  <cbc:ID>{{x .ID}}</cbc:ID>
+  <cbc:ReferenceDate>{{date .GenerationDate}}</cbc:ReferenceDate>
+  <cbc:IssueDate>{{date .IssueDate}}</cbc:IssueDate>
+  <cac:Signature>
+    <cbc:ID>SIGN{{x .Company.RUC}}</cbc:ID>
+    <cac:SignatoryParty>
+      <cac:PartyIdentification>
+        <cbc:ID>{{x .Company.RUC}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>{{x .Company.LegalName}}</cbc:Name>
+      </cac:PartyName>
+    </cac:SignatoryParty>
+    <cac:DigitalSignatureAttachment>
+      <cac:ExternalReference>
+        <cbc:URI>#{{.SignatureID}}</cbc:URI>
+      </cac:ExternalReference>
+    </cac:DigitalSignatureAttachment>
+  </cac:Signature>
+  <cac:AccountingSupplierParty>
+    <cbc:CustomerAssignedAccountID>{{x .Company.RUC}}</cbc:CustomerAssignedAccountID>
+    <cbc:AdditionalAccountID>6</cbc:AdditionalAccountID>
+    <cac:Party>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Company.LegalName}}</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+{{- range $i, $l := .Lines}}
+  <sac:VoidedDocumentsLine>
+    <cbc:LineID>{{add1 $i}}</cbc:LineID>
+    <cbc:DocumentTypeCode>{{x (print $l.Type)}}</cbc:DocumentTypeCode>
+    <sac:DocumentSerialID>{{x $l.Series}}</sac:DocumentSerialID>
+    <sac:DocumentNumberID>{{$l.Number}}</sac:DocumentNumberID>
+    <sac:VoidReasonDescription>{{x $l.Reason}}</sac:VoidReasonDescription>
+  </sac:VoidedDocumentsLine>
+{{- end}}
+</VoidedDocuments>

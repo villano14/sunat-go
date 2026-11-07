@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SummaryDocuments xmlns="urn:sunat:names:specification:ubl:peru:schema:xsd:SummaryDocuments-1" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2" xmlns:sac="urn:sunat:names:specification:ubl:peru:schema:xsd:SunatAggregateComponents-1">
+  <ext:UBLExtensions>
+    <ext:UBLExtension>
+      <ext:ExtensionContent/>
+    </ext:UBLExtension>
+  </ext:UBLExtensions>
+  <cbc:UBLVersionID>2.0</cbc:UBLVersionID>
+  <cbc:CustomizationID>1.1</cbc:CustomizationID>
+  <cbc:ID>{{x .ID}}</cbc:ID>
+  <cbc:ReferenceDate>{{date .GenerationDate}}</cbc:ReferenceDate>
+  <cbc:IssueDate>{{date .IssueDate}}</cbc:IssueDate>
+  <cac:Signature>
+    <cbc:ID>SIGN{{x .Company.RUC}}</cbc:ID>
+    <cac:SignatoryParty>
+      <cac:PartyIdentification>
+        <cbc:ID>{{x .Company.RUC}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>{{x .Company.LegalName}}</cbc:Name>
+      </cac:PartyName>
+    </cac:SignatoryParty>
+    <cac:DigitalSignatureAttachment>
+      <cac:ExternalReference>
+        <cbc:URI>#{{.SignatureID}}</cbc:URI>
+      </cac:ExternalReference>
+    </cac:DigitalSignatureAttachment>
+  </cac:Signature>
+  <cac:AccountingSupplierParty>
+    <cbc:CustomerAssignedAccountID>{{x .Company.RUC}}</cbc:CustomerAssignedAccountID>
+    <cbc:AdditionalAccountID>6</cbc:AdditionalAccountID>
+    <cac:Party>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Company.LegalName}}</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+{{- $cur := .Currency}}
+{{- range $i, $l := .Lines}}
+  <sac:SummaryDocumentsLine>
+    <cbc:LineID>{{add1 $i}}</cbc:LineID>
+    <cbc:DocumentTypeCode>{{x (print $l.Type)}}</cbc:DocumentTypeCode>
+    <cbc:ID>{{x $l.ID}}</cbc:ID>
+    <cac:AccountingCustomerParty>
+      <cbc:CustomerAssignedAccountID>{{x $l.ClientNumber}}</cbc:CustomerAssignedAccountID>
+      <cbc:AdditionalAccountID>{{x (print $l.ClientIdentityType)}}</cbc:AdditionalAccountID>
+    </cac:AccountingCustomerParty>
+{{- with $l.Reference}}
+    <cac:BillingReference>
+      <cac:InvoiceDocumentReference>
+        <cbc:ID>{{x .ID}}</cbc:ID>
+        <cbc:DocumentTypeCode>{{x (print .Type)}}</cbc:DocumentTypeCode>
+      </cac:InvoiceDocumentReference>
+    </cac:BillingReference>
+{{- end}}
+    <cac:Status>
+      <cbc:ConditionCode>{{x (print $l.Status)}}</cbc:ConditionCode>
+    </cac:Status>
+    <sac:TotalAmount currencyID="{{x $cur}}">{{amt $l.Total}}</sac:TotalAmount>
+{{- range $l.Payments}}
+    <sac:BillingPayment>
+      <cbc:PaidAmount currencyID="{{x $cur}}">{{amt .Amount}}</cbc:PaidAmount>
+      <cbc:InstructionID>{{.Instruction}}</cbc:InstructionID>
+    </sac:BillingPayment>
+{{- end}}
+{{- if nz $l.OtherCharges}}
+    <cac:AllowanceCharge>
+      <cbc:ChargeIndicator>true</cbc:ChargeIndicator>
+      <cbc:Amount currencyID="{{x $cur}}">{{amt $l.OtherCharges}}</cbc:Amount>
+    </cac:AllowanceCharge>
+{{- end}}
+{{- range $l.Taxes}}
+    <cac:TaxTotal>
+      <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .Amount}}</cbc:TaxAmount>
+      <cac:TaxSubtotal>
+        <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .Amount}}</cbc:TaxAmount>
+        <cac:TaxCategory>
+{{- if .ShowPercent}}
+          <cbc:Percent>{{amt .Percent}}</cbc:Percent>
+{{- end}}
+          <cac:TaxScheme>
+            <cbc:ID>{{.Scheme.ID}}</cbc:ID>
+            <cbc:Name>{{.Scheme.Name}}</cbc:Name>
+            <cbc:TaxTypeCode>{{.Scheme.Code}}</cbc:TaxTypeCode>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+    </cac:TaxTotal>
+{{- end}}
+  </sac:SummaryDocumentsLine>
+{{- end}}
+</SummaryDocuments>
