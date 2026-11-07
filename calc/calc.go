@@ -151,7 +151,7 @@ func Line(in LineInput) (model.InvoiceLine, error) {
 		unitValue = round10(in.UnitValue)
 		unitPrice = round10(unitValue.Add(isc.perUnit(unitValue)).Mul(one.Add(rate)))
 	} else {
-		unitPrice = in.UnitPrice
+		unitPrice = round10(in.UnitPrice)
 		pre, err := isc.removeFrom(unitPrice.DivRound(one.Add(rate), divPrecision))
 		if err != nil {
 			return model.InvoiceLine{}, err
