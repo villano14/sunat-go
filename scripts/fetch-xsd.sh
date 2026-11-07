@@ -1,5 +1,5 @@
 #!/bin/sh
-# Download the XSD schemas used by `go test ./ubl -run TestXSD` into
+# Download XSDs used by `go test ./ubl -run TestSummaryPerceptionXSD` into
 # ./testdata-xsd (git-ignored). Idempotent: files already present are kept.
 #
 # Layout (the layout the test expects):
