@@ -1,10 +1,10 @@
 # Roadmap: library capability before service integration
 
 sunat-go owns SUNAT protocol code (UBL, signing, SOAP/REST and CDR). Supported
-library flows are implemented and exercised offline, but **library completion,
-live acceptance and APISunatGo integration are separate claims**. Opt-in document
-aggregation is implemented with explicit policy limits; HTTP, PDF and MCP remain
-outside this module and come after the library work.
+library flows are implemented and independently verified offline. **Library-scope
+completion is not SUNAT production certification or APISunatGo integration**.
+Opt-in document aggregation is implemented with explicit policy limits; HTTP,
+PDF and MCP remain outside this module and come after the library work.
 
 ## Implemented library capabilities and evidence
 
@@ -19,7 +19,7 @@ outside this module and come after the library work.
 | 4 | Optional summary perception reference | XML, nil-preservation and cached-XSD tests | Caller supplies amounts/rate; optional tooling/cache required for XSD check. No live acceptance claim; see [summaries](summaries.md) |
 | 4 | Optional `PackTransport.SendPack` / `SOAPClient.GetStatus` | Exact ZIP bytes/name, namespace/auth/action, ticket, faults, HTTP/context and raw multi-CDR archive tests | Transport-only; caller builds signed-document ZIP and handles per-document CDRs/report. No live sendPack or attachment compatibility proof; see [packs](packs.md) |
 | 5 | Retention `20` / Perception `40`: build/send methods | XML golden/value/order, signing, pipeline and SOAP tests | Separate otros CPE endpoint; 2026-11-07 beta retention and perception tests accepted with CDR code `0`; not production proof |
-| 6 | GRE `09` / `31`: `GREClient`, `gre` REST/OAuth2 | XML golden/value, signing, pipeline and local REST/token tests | GRE integration is separately opt-in and credential-dependent; defaults may issue a real guide in production. No external check performed here |
+| 6 | GRE `09` / `31`: `GREClient`, `gre` REST/OAuth2 | XML golden/value, signing, pipeline and local REST/token tests; public OAuth encoding/redaction and concurrent-401 renewal probes | GRE integration is separately opt-in and credential-dependent; defaults may issue a real guide in production. No external check performed here |
 | 7 | `ConsultTransport.GetStatusCdr` / `Client.QueryCDR` | Local HTTP and fake-facade tests, including optional CDR | Production consult service only; no published beta consult endpoint, no real-SOL production verification |
 | 7 | `CPEStatusTransport.GetStatusCpe` / `Client.QueryStatus` | Status-only codes/messages, errors, escaping/auth and endpoint-isolation tests | Not ticket polling or CDR recovery; no live availability/authorization claim; see [status](status.md) |
 | 8 | Remove APISunatGo internal engine | Not implemented or verified by this repository's tests | External integration/replacement remains future work |
@@ -30,7 +30,7 @@ it skips if prerequisites are absent. These checks are independent of SUNAT's
 live business validation. Ordinary `go test ./...` does not establish that any
 opt-in external test ran.
 
-## What remains before declaring the library complete
+## Library scope and external operational limits
 
 - **Calculation policy:** `calc.Totals` now sums rounded line amounts/taxes,
   handles explicit non-base allowances/charges, gross prepayments and rounding,
@@ -56,22 +56,36 @@ opt-in external test ran.
   SUNAT business rule or all combinations of optional fields. Further gaps must
   be demonstrated and scoped, not hidden behind a blanket completion claim.
 
-## Final verification gate (2026-11-07)
+## Final offline verification
 
-The complete implementation working tree passed `go test -race ./...`,
-`go vet ./...` and `git diff --check` after the totals and individual-receipt
-work. XML signature and summary-perception schema checks also executed with
-the required local tools available. These are observed local checks, not
-production certification.
+A new, explicitly requested independent verification cycle passed against source
+HEAD `c7c7ab1`, using a preflighted tracked-files-only archive. The race suite
+passed 184 top-level tests/examples and 431 additional subtest events; the only
+five skips were live opt-in tests. Actual `xmlsec1` signature checks and both
+summary-perception XSD cases executed. `go vet ./...` and the offline receipt
+example also passed. The earlier parent race/vet/diff checks passed separately.
 
-The required final independent security/concurrency verification did **not**
-execute: preparation of its isolated workspace failed on a runtime Unix socket.
-No independent final PASS is claimed, and its unavailable attempt was not
-retried or replaced with parent self-checks. Automated native review assessment
-was also unavailable; no native review approval was issued. Local work-unit
-commits preserve implementation and attribution, not release authorization.
-The earlier RC beta HTTP `401` and credential-dependent checks remain subject
-to the external-proof limits above.
+Two independent public-API GRE probes also passed under the race detector:
+reserved-character OAuth form encoding with exact credential-error redaction,
+and 20 simultaneous revoked-token `401` responses sharing one renewal (two
+token requests total, 41 API requests). Their exact test bodies are retained in
+`gre/closure_probe_test.go` as durable regression coverage.
+
+The original isolated-copy attempt remains **failed setup with zero probes**:
+a runtime Unix socket prevented preparation. It is not a passing result; the
+successful archive-based cycle is separate, not a rewritten outcome.
+
+Native assessments for the GRE, shared invoice foundation and consult work
+units now succeeded in clean same-clone worktrees: `nativeRisk=medium`,
+`reviewDue=false` (`under_budget`). Named risk escalations still required the
+independent verification above, which passed. No native START, lineage, review
+approval or review-switch change is claimed. Commits and verification are not
+release authorization.
+
+The earlier RC beta HTTP `401` remains unexplained, with no beta retry. Live
+GRE, consult/sendPack interoperability and production acceptance remain
+unverified external operational limits, not reproduced library defects. Offline
+verification does not certify SUNAT production acceptance.
 
 ## APISunatGo migration plan — external, not completed here
 

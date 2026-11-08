@@ -6,10 +6,10 @@ XMLDSig, send it to SUNAT web services, and read CDR responses.
 Inspired by [Greenter](https://github.com/thegreenter/greenter) (PHP), designed as an
 idiomatic Go library: small packages, no framework, no database.
 
-> Implemented document flows have offline tests; this is not a claim that the
-> library is complete or every flow is accepted by SUNAT. Optional document
-> aggregation is implemented; excluded tax policies and external beta/production
-> checks remain caller/environment concerns. HTTP, PDF and MCP are future work.
+> Supported library flows passed integrated offline and independent verification;
+> this is not SUNAT production certification. Optional document aggregation is
+> implemented; excluded tax policies and external operational checks remain
+> caller/environment concerns. HTTP/PDF APIs are the next project; MCP follows.
 > See the [capability and evidence roadmap](docs/roadmap.md).
 
 ## Document flows
@@ -116,6 +116,9 @@ accepting the consequences.
 
 On 2026-11-07 the SOAP beta run accepted invoice, retention and perception
 (CDR code `0`), but summary ticket polling failed with HTTP `401`; the run
-therefore failed overall. GRE was skipped. Offline race tests and static
-analysis passed. See the roadmap for unresolved external proof; this is not
-production certification or a completed-library claim.
+therefore failed overall. Its cause remains unknown, and no beta retry occurred.
+GRE was skipped. A separate final independent offline cycle passed race tests,
+static analysis, actual signature/XSD checks and public GRE security/concurrency
+probes. Live GRE, consult/sendPack interoperability and production acceptance
+remain unverified external limits, not reproduced library defects. See the
+roadmap for evidence and scope; offline support is not production certification.
