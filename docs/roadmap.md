@@ -22,6 +22,9 @@ PDF and MCP remain outside this module and come after the library work.
 | 6 | GRE `09` / `31`: `GREClient`, `gre` REST/OAuth2 | XML golden/value, signing, pipeline and local REST/token tests; public OAuth encoding/redaction and concurrent-401 renewal probes | GRE integration is separately opt-in and credential-dependent; defaults may issue a real guide in production. No external check performed here |
 | 7 | `ConsultTransport.GetStatusCdr` / `Client.QueryCDR` | Local HTTP and fake-facade tests, including optional CDR | Production consult service only; no published beta consult endpoint, no real-SOL production verification |
 | 7 | `CPEStatusTransport.GetStatusCpe` / `Client.QueryStatus` | Status-only codes/messages, errors, escaping/auth and endpoint-isolation tests | Not ticket polling or CDR recovery; no live availability/authorization claim; see [status](status.md) |
+| 9 | Liquidación de compra `04`: `ubl.PurchaseSettlement`, `calc.Settlement`, `SendPurchaseSettlement` | Golden, values, validation, OASIS SelfBilledInvoice XSD, canonical parity with the accepted PHP builder, calc and fake-pipeline tests | No sunat-go beta submission yet; see [purchase settlements](purchase.md) |
+| 10 | Reversión RR: `model.Reversion`, `ubl.Reversion`, `SendReversion` | Golden, values, validation, VoidedDocuments XSD, Greenter parity and fake-transport tests | No beta submission; 04 reversion endpoint unverified |
+| 11 | Greenter parity and XSD suite | `scripts/parity/run.sh` (manual) and `TestDocumentsXSD`/`TestRenderedXSD` over every document type | Accepted differences listed in `scripts/parity/README.md` |
 | 8 | Remove APISunatGo internal engine | Not implemented or verified by this repository's tests | External integration/replacement remains future work |
 
 Signing tests use `xmlsec1` when installed and skip otherwise. The summary
@@ -48,6 +51,13 @@ opt-in external test ran.
   real-credential production consult checks still require an appropriate
   authorized environment. Beta success is not production acceptance, and no
   production submission is authorized by this plan.
+- **RC polling 401 (2026-11-12 follow-up):** the WS-Security password now
+  declares the `PasswordText` type, as Greenter does. This is parity, not a
+  verified fix: no beta run has been made since.
+- **Withholding payments (2026-11-12):** the SUNAT schema allows one
+  `cac:Payment` per related document; retentions and perceptions with more
+  than one payment per detail are now rejected instead of producing XML the
+  schema rejects (Greenter renders them).
 - **sendPack application policy:** eligibility, limits, ZIP assembly, scheduling
   and full response-archive handling belong to the caller. No batch signing
   policy or multi-CDR facade was added. Transport support does not establish

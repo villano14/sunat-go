@@ -19,6 +19,8 @@ idiomatic Go library: small packages, no framework, no database.
 | Factura `01` / Boleta `03` | `Client.BuildInvoice`, `SendInvoice`; SOAP billService `sendBill` | Usage below; [individual boletas](docs/receipts.md) |
 | Credit/debit notes `07` / `08` | `Client.BuildNote`, `SendNote`; SOAP billService | [Notes](docs/notes.md) |
 | Daily summary RC / voided documents RA | `Client.BuildSummary`, `SendSummary`, `BuildVoided`, `SendVoided`; poll `Client.Status` | [Summaries and optional perception](docs/summaries.md) |
+| Liquidación de compra `04` | `Client.BuildPurchaseSettlement`, `SendPurchaseSettlement`; SOAP billService `sendBill` (UBL SelfBilledInvoice) | [Purchase settlements](docs/purchase.md) |
+| Reversión RR (retention `20`, perception `40`, settlement `04`) | `Client.BuildReversion`, `SendReversion`; `sendSummary` on otros CPE, poll `Client.Status` | [Purchase settlements](docs/purchase.md#reversion) |
 | Retention `20` / Perception `40` | `Client.BuildRetention`, `SendRetention`, `BuildPerception`, `SendPerception`; separate otros CPE billService | `transport.OtrosCPEBeta` / `OtrosCPEProduction` |
 | Despatch/GRE `09` / `31` | `GREClient.BuildDespatch`, `SendDespatch`, `DespatchStatus`; REST + OAuth2 | `sunat.NewGRE(signer, gre.New(creds))` |
 | Document status / CDR recovery | `Client.QueryStatus` / `QueryCDR`; billConsultService, not ticket polling | [Status](docs/status.md) |
@@ -35,12 +37,16 @@ multi-CDR facade: callers must handle the pack's per-document CDRs/report from
 | `sunat` (root) | `Client` document facade and separate `GREClient` |
 | `model` | Document/party structs and structural validation; caller-supplied amounts |
 | `catalog` | Typed SUNAT catalogs and supported-code validation |
-| `calc` | Decimal line calculations (`calc.Line`) and opt-in document aggregation (`calc.Totals`) |
+| `calc` | Decimal line calculations (`calc.Line`), opt-in document aggregation (`calc.Totals`) and purchase settlements (`calc.Settlement`) |
 | `ubl` | UBL rendering for supported document types, including SUNAT RC/RA/withholding formats |
 | `sign` | Certificate loading (PFX/PEM) and XMLDSig enveloped signature |
 | `transport` | SOAP billService, otros CPE and billConsultService with WS-Security |
 | `gre` | GRE REST submission/status and OAuth2 token handling |
 | `cdr` | CDR (`ApplicationResponse`) parsing; not a pack report aggregator |
+
+Output is checked against Greenter with `scripts/parity/run.sh` (see
+[scripts/parity](scripts/parity/README.md)) and every golden is validated
+against the official XSDs (`scripts/fetch-xsd.sh`, then `go test ./ubl`).
 
 Every package can be used on its own. For example, `sign` signs SUNAT XML you
 already have. See [calculations and aggregation limits](docs/calculations.md)

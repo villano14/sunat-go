@@ -76,7 +76,7 @@ func TestSettlementRounding(t *testing.T) {
 	eq(t, "line 2 IGV", r.Lines[1].IGV, "1.8")
 	eq(t, "line 2 UnitPrice", r.Lines[1].UnitPrice, "1.6885714286")
 	eq(t, "TaxedAmount", r.TaxedAmount, "11.03")
-	eq(t, "IGV", r.IGV, "1.99") // round2(11.03 * 0.18) = 1.9854, not 0.18 + 1.80
+	eq(t, "IGV", r.IGV, "1.99")             // round2(11.03 * 0.18) = 1.9854, not 0.18 + 1.80
 	eq(t, "IncomeTax", r.IncomeTax, "0.44") // 0.04 + 0.40
 	eq(t, "Payable", r.Payable, "10.59")
 }
