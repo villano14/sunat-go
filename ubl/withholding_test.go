@@ -49,10 +49,7 @@ func sampleRetention() model.Retention {
 			{
 				DocumentType: catalog.Invoice, Number: "F001-1", IssueDate: withholdingDay(10, 20),
 				Total: withholdingDec("100"), Currency: "USD",
-				Payments: []model.Payment{
-					{Currency: "USD", Amount: withholdingDec("60"), Date: withholdingDay(10, 25)},
-					{Currency: "USD", Amount: withholdingDec("40"), Date: withholdingDay(10, 26)},
-				},
+				Payments:      []model.Payment{{Currency: "USD", Amount: withholdingDec("100"), Date: withholdingDay(10, 26)}},
 				RetentionDate: withholdingDay(10, 26), Retained: withholdingDec("6"), NetPayable: withholdingDec("94"),
 				Exchange: &model.ExchangeRate{
 					SourceCurrency: "USD", TargetCurrency: "PEN",
@@ -220,8 +217,8 @@ func TestRetentionValues(t *testing.T) {
 		"IssueDate":          "2026-10-20",
 		"TotalInvoiceAmount": "100.00",
 		"Payment/ID":         "1",
-		"Payment/PaidAmount": "60.00",
-		"Payment/PaidDate":   "2026-10-25",
+		"Payment/PaidAmount": "100.00",
+		"Payment/PaidDate":   "2026-10-26",
 		"SUNATRetentionInformation/SUNATRetentionAmount":            "6.00",
 		"SUNATRetentionInformation/SUNATRetentionDate":              "2026-10-26",
 		"SUNATRetentionInformation/SUNATNetTotalPaid":               "94.00",
@@ -235,12 +232,8 @@ func TestRetentionValues(t *testing.T) {
 	if got := first.findAll("TotalInvoiceAmount")[0].attr("currencyID"); got != "USD" {
 		t.Errorf("reference currencyID = %q, want USD", got)
 	}
-	payments := first.findAll("Payment")
-	if len(payments) != 2 {
-		t.Fatalf("payments = %d, want 2", len(payments))
-	}
-	if got, _ := payments[1].text("ID"); got != "2" {
-		t.Errorf("second payment ID = %q, want 2", got)
+	if payments := first.findAll("Payment"); len(payments) != 1 {
+		t.Fatalf("payments = %d, want 1", len(payments))
 	}
 	if len(refs[1].findAll("SUNATRetentionInformation")) != 0 {
 		t.Error("detail without retention date and amounts must omit SUNATRetentionInformation")
@@ -426,5 +419,23 @@ func TestWithholdingElementOrder(t *testing.T) {
 				t.Errorf("child order = %v, want %v", got, tc.tags)
 			}
 		})
+	}
+}
+
+// The SUNAT schema allows one cac:Payment per related document.
+func TestWithholdingRejectsManyPayments(t *testing.T) {
+	two := []model.Payment{
+		{Currency: "PEN", Amount: withholdingDec("60"), Date: withholdingDay(10, 25)},
+		{Currency: "PEN", Amount: withholdingDec("40"), Date: withholdingDay(10, 26)},
+	}
+	r := sampleRetention()
+	r.Details[0].Payments = two
+	if _, err := ubl.Retention(r); err == nil || !strings.Contains(err.Error(), "retention detail 1: at most one payment") {
+		t.Errorf("Retention() error = %v", err)
+	}
+	p := samplePerception()
+	p.Details[0].Collections = two
+	if _, err := ubl.Perception(p); err == nil || !strings.Contains(err.Error(), "perception detail 1: at most one payment") {
+		t.Errorf("Perception() error = %v", err)
 	}
 }

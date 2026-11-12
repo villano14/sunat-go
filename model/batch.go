@@ -28,10 +28,10 @@ func (r SummaryReference) ID() string {
 // It is not a standalone Comprobante de Percepción (40).
 type SummaryPerception struct {
 	Regime         catalog.PerceptionRegime // Catalog 22, e.g. 01
-	Rate           decimal.Decimal         // Percentage, e.g. 2 for 2%
-	Amount         decimal.Decimal         // Importe de la percepción
-	TotalCollected decimal.Decimal         // Total cobrado, incluida la percepción
-	TaxableAmount  decimal.Decimal         // Base imponible de la percepción
+	Rate           decimal.Decimal          // Percentage, e.g. 2 for 2%
+	Amount         decimal.Decimal          // Importe de la percepción
+	TotalCollected decimal.Decimal          // Total cobrado, incluida la percepción
+	TaxableAmount  decimal.Decimal          // Base imponible de la percepción
 }
 
 // SummaryLine reports one boleta (03) or note (07, 08) in a Resumen diario.
@@ -96,7 +96,7 @@ func (s Summary) FileName() string {
 
 // VoidedLine is one document a Comunicación de baja voids.
 type VoidedLine struct {
-	Type   catalog.DocumentType // 01, 07 or 08; boletas are voided through a Summary
+	Type   catalog.DocumentType // 01, 07 or 08 (boletas go in a Summary); 20 or 40 in a Reversion
 	Series string
 	Number int64
 	Reason string // Motivo de baja
@@ -126,6 +126,30 @@ func (v Voided) ID() string {
 // FileName returns the SUNAT file name without extension, e.g. "20000000001-RA-20261028-1".
 func (v Voided) FileName() string {
 	return v.Company.RUC + "-" + v.ID()
+}
+
+// Reversion is a Resumen de reversiones (RR): it reverts Comprobantes de
+// Retención (20) and Percepción (40), which a Comunicación de baja cannot void.
+// It is sent with sendSummary to the otros CPE billService, like the documents
+// it reverts. Lines reuse VoidedLine with Type 20 or 40.
+//
+// Dates are rendered as given, so pass them in America/Lima.
+type Reversion struct {
+	Company        Company
+	GenerationDate time.Time // Fecha de emisión de los comprobantes (cbc:ReferenceDate)
+	IssueDate      time.Time // Fecha de generación de la reversión (cbc:IssueDate)
+	Correlative    int       // Daily sequence of the reversion, 1 to 99999
+	Lines          []VoidedLine
+}
+
+// ID returns the reversion identifier, e.g. "RR-20261028-1".
+func (r Reversion) ID() string {
+	return batchID(catalog.BatchReversion, r.IssueDate, r.Correlative)
+}
+
+// FileName returns the SUNAT file name without extension, e.g. "20000000001-RR-20261028-1".
+func (r Reversion) FileName() string {
+	return r.Company.RUC + "-" + r.ID()
 }
 
 func batchID(t catalog.BatchType, issue time.Time, correlative int) string {

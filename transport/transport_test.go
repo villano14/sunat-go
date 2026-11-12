@@ -47,9 +47,11 @@ func TestSendBill(t *testing.T) {
 	cdr := []byte("cdr-zip-bytes")
 	var got sendBillRequest
 	var soapAction, contentType string
+	var rawBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		soapAction, contentType = r.Header.Get("SOAPAction"), r.Header.Get("Content-Type")
 		body, _ := io.ReadAll(r.Body)
+		rawBody = body
 		if err := xml.Unmarshal(body, &got); err != nil {
 			t.Errorf("request is not valid XML: %v\n%s", err, body)
 		}
@@ -69,6 +71,9 @@ func TestSendBill(t *testing.T) {
 	}
 	if got.Username != "20000000001MODDATOS" || got.Password != "moddatos&<" {
 		t.Errorf("credentials = %q / %q", got.Username, got.Password)
+	}
+	if want := "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText"; !bytes.Contains(rawBody, []byte(`<wsse:Password Type="`+want+`">`)) {
+		t.Errorf("Password must declare Type %q", want)
 	}
 	if got.FileName != "20000000001-01-F001-1.zip" {
 		t.Errorf("fileName = %q", got.FileName)

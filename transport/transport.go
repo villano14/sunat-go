@@ -21,6 +21,10 @@ const (
 	BillProduction = "https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService"
 )
 
+// passwordText is the WS-Security UsernameToken password type. It is the
+// default when absent, but Greenter (and SUNAT's own samples) state it.
+const passwordText = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText"
+
 // maxResponse caps the bytes read from SUNAT to protect against runaway bodies.
 const maxResponse = 32 << 20
 
@@ -141,7 +145,7 @@ func (c *SOAPClient) callEndpoint(ctx context.Context, endpoint, action, body st
 	payload := `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://service.sunat.gob.pe" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">` +
 		`<soapenv:Header><wsse:Security><wsse:UsernameToken>` +
 		`<wsse:Username>` + escape(c.creds.RUC+c.creds.User) + `</wsse:Username>` +
-		`<wsse:Password>` + escape(c.creds.Password) + `</wsse:Password>` +
+		`<wsse:Password Type="` + passwordText + `">` + escape(c.creds.Password) + `</wsse:Password>` +
 		`</wsse:UsernameToken></wsse:Security></soapenv:Header>` +
 		`<soapenv:Body>` + body + `</soapenv:Body></soapenv:Envelope>`
 

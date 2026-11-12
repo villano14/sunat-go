@@ -135,6 +135,34 @@ func (c *Client) BuildVoided(v model.Voided) ([]byte, error) {
 	return signed, nil
 }
 
+// BuildReversion renders and signs r without sending it or performing I/O.
+func (c *Client) BuildReversion(r model.Reversion) ([]byte, error) {
+	xml, err := ubl.Reversion(r)
+	if err != nil {
+		return nil, fmt.Errorf("sunat: build reversion: %w", err)
+	}
+	signed, err := c.signer.Sign(xml)
+	if err != nil {
+		return nil, fmt.Errorf("sunat: sign reversion: %w", err)
+	}
+	return signed, nil
+}
+
+// SendReversion builds and signs r, sends it with sendSummary and returns the
+// ticket; poll it with Status. Like the retentions and perceptions it reverts,
+// a reversion goes to the otros CPE billService, so the Client's transport
+// must target transport.OtrosCPEBeta or transport.OtrosCPEProduction and
+// implement transport.BatchTransport (otherwise the error wraps
+// ErrBatchUnsupported). Once signing succeeds, BatchResult.XML is returned
+// even on error.
+func (c *Client) SendReversion(ctx context.Context, r model.Reversion) (BatchResult, error) {
+	xml, err := c.BuildReversion(r)
+	if err != nil {
+		return BatchResult{}, err
+	}
+	return c.sendBatch(ctx, "reversion", r.FileName(), xml)
+}
+
 // SendSummary builds and signs s, sends it with sendSummary and returns the
 // ticket. Once signing succeeds, BatchResult.XML is returned even on error.
 // Poll the ticket with Status. The transport must implement
@@ -176,7 +204,8 @@ func (c *Client) sendBatch(ctx context.Context, kind, fileName string, xml []byt
 	return result, nil
 }
 
-// Status asks SUNAT for the state of a ticket from SendSummary or SendVoided.
+// Status asks SUNAT for the state of a ticket from SendSummary, SendVoided or
+// SendReversion.
 //
 // While SUNAT is working, the result is InProcess (code 98) and the caller
 // should poll again later. Once finished, the CDR is parsed: code 0 with an

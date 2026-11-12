@@ -24,8 +24,9 @@ func (s SummaryStatus) Valid() bool {
 type BatchType string
 
 const (
-	BatchSummary BatchType = "RC" // Resumen diario de boletas
-	BatchVoided  BatchType = "RA" // Comunicación de baja
+	BatchSummary   BatchType = "RC" // Resumen diario de boletas
+	BatchVoided    BatchType = "RA" // Comunicación de baja
+	BatchReversion BatchType = "RR" // Resumen de reversiones de retenciones (20) y percepciones (40)
 )
 
 // Billing payment instruction codes of a Resumen diario line (catalog 11).

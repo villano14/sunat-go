@@ -66,12 +66,7 @@
     <cbc:TotalInvoiceAmount currencyID="USD">100.00</cbc:TotalInvoiceAmount>
     <cac:Payment>
       <cbc:ID>1</cbc:ID>
-      <cbc:PaidAmount currencyID="USD">60.00</cbc:PaidAmount>
-      <cbc:PaidDate>2026-10-25</cbc:PaidDate>
-    </cac:Payment>
-    <cac:Payment>
-      <cbc:ID>2</cbc:ID>
-      <cbc:PaidAmount currencyID="USD">40.00</cbc:PaidAmount>
+      <cbc:PaidAmount currencyID="USD">100.00</cbc:PaidAmount>
       <cbc:PaidDate>2026-10-26</cbc:PaidDate>
     </cac:Payment>
     <sac:SUNATRetentionInformation>

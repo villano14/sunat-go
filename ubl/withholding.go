@@ -1,6 +1,7 @@
 package ubl
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -53,6 +54,12 @@ func newWithholdingExchange(e *model.ExchangeRate) *withholdingExchangeView {
 	return &withholdingExchangeView{ExchangeRate: *e, Factor: e.Rate.StringFixed(6)}
 }
 
+// errManyPayments: the SUNAT schema (SUNATRetentionDocumentReferenceType and
+// SUNATPerceptionDocumentReferenceType) allows at most one cac:Payment per
+// related document. Greenter renders every payment, producing XML the schema
+// rejects; each payment must be reported as its own detail instead.
+var errManyPayments = errors.New("at most one payment per related document; report each payment as its own detail")
+
 // withholdingInfo reports whether the retention/perception block is rendered,
 // which Greenter only does when amount, net and date are all present.
 func withholdingInfo(amount, net decimal.Decimal, date time.Time) bool {
@@ -76,7 +83,10 @@ func Retention(r model.Retention) ([]byte, error) {
 		Company: r.Company, Party: r.Supplier, Regime: string(r.Regime), Rate: rate,
 		Note: r.Note, Total: r.TotalRetained, Settled: r.TotalPaid,
 	}
-	for _, d := range r.Details {
+	for i, d := range r.Details {
+		if len(d.Payments) > 1 {
+			return nil, fmt.Errorf("ubl: retention detail %d: %w", i+1, errManyPayments)
+		}
 		v.Details = append(v.Details, withholdingDetailView{
 			DocumentType: d.DocumentType, Number: d.Number, IssueDate: d.IssueDate,
 			Total: d.Total, Currency: d.Currency, Payments: d.Payments,
@@ -105,7 +115,10 @@ func Perception(p model.Perception) ([]byte, error) {
 		Company: p.Company, Party: p.Customer, Regime: string(p.Regime), Rate: rate,
 		Note: p.Note, Total: p.TotalPerceived, Settled: p.TotalCollected,
 	}
-	for _, d := range p.Details {
+	for i, d := range p.Details {
+		if len(d.Collections) > 1 {
+			return nil, fmt.Errorf("ubl: perception detail %d: %w", i+1, errManyPayments)
+		}
 		v.Details = append(v.Details, withholdingDetailView{
 			DocumentType: d.DocumentType, Number: d.Number, IssueDate: d.IssueDate,
 			Total: d.Total, Currency: d.Currency, Payments: d.Collections,

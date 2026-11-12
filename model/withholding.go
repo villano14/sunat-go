@@ -37,7 +37,7 @@ type RetentionDetail struct {
 	IssueDate    time.Time
 	Total        decimal.Decimal // Importe total del documento relacionado
 	Currency     string          // ISO 4217 of the related document
-	Payments     []Payment       // Pagos
+	Payments     []Payment       // Pago: at most one per detail (SUNAT schema); repeat the document for each payment
 
 	RetentionDate time.Time
 	Retained      decimal.Decimal // Importe retenido, in PEN
