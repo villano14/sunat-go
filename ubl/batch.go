@@ -94,13 +94,14 @@ func Summary(s model.Summary) ([]byte, error) {
 }
 
 // Voided renders a Comunicación de baja (RA) as unsigned VoidedDocuments-1 XML.
-// Retentions (20) and perceptions (40) are rejected: revert them with Reversion.
+// Retentions (20), perceptions (40) and purchase settlements (04) are rejected:
+// SUNAT reverts them with a Reversion.
 func Voided(vd model.Voided) ([]byte, error) {
 	if err := batchCheck("voided", vd.Correlative, vd.GenerationDate, vd.IssueDate, len(vd.Lines)); err != nil {
 		return nil, err
 	}
 	for i, l := range vd.Lines {
-		if l.Type == catalog.Retention || l.Type == catalog.Perception {
+		if reverted(l.Type) {
 			return nil, fmt.Errorf("ubl: voided line %d: type %s must be reverted with a Reversion (RR)", i+1, l.Type)
 		}
 	}
@@ -109,17 +110,23 @@ func Voided(vd model.Voided) ([]byte, error) {
 
 // Reversion renders a Resumen de reversiones (RR) as unsigned
 // VoidedDocuments-1 XML, the schema SUNAT and Greenter share with the
-// Comunicación de baja. Only retentions (20) and perceptions (40) are accepted.
+// Comunicación de baja. Only retentions (20), perceptions (40) and purchase
+// settlements (04, RS 097-2012/SUNAT art. 29-F) are accepted.
 func Reversion(r model.Reversion) ([]byte, error) {
 	if err := batchCheck("reversion", r.Correlative, r.GenerationDate, r.IssueDate, len(r.Lines)); err != nil {
 		return nil, err
 	}
 	for i, l := range r.Lines {
-		if l.Type != catalog.Retention && l.Type != catalog.Perception {
-			return nil, fmt.Errorf("ubl: reversion line %d: type must be %q or %q, got %q", i+1, catalog.Retention, catalog.Perception, l.Type)
+		if !reverted(l.Type) {
+			return nil, fmt.Errorf("ubl: reversion line %d: type must be 20, 40 or 04, got %q", i+1, l.Type)
 		}
 	}
 	return voidedLike("reversion", r.ID(), r.Company, r.GenerationDate, r.IssueDate, r.Lines)
+}
+
+// reverted reports whether SUNAT voids documents of type t with a Reversion.
+func reverted(t catalog.DocumentType) bool {
+	return t == catalog.Retention || t == catalog.Perception || t == catalog.PurchaseSettlement
 }
 
 func voidedLike(kind, id string, company model.Company, generation, issue time.Time, lines []model.VoidedLine) ([]byte, error) {

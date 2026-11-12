@@ -150,11 +150,12 @@ func (c *Client) BuildReversion(r model.Reversion) ([]byte, error) {
 
 // SendReversion builds and signs r, sends it with sendSummary and returns the
 // ticket; poll it with Status. Like the retentions and perceptions it reverts,
-// a reversion goes to the otros CPE billService, so the Client's transport
-// must target transport.OtrosCPEBeta or transport.OtrosCPEProduction and
-// implement transport.BatchTransport (otherwise the error wraps
-// ErrBatchUnsupported). Once signing succeeds, BatchResult.XML is returned
-// even on error.
+// a reversion goes to the otros CPE billService (transport.OtrosCPEBeta or
+// transport.OtrosCPEProduction), as Greenter and the reference application do;
+// SUNAT acceptance of a reversion of purchase settlements (04) there is not
+// verified in beta yet. The transport must implement transport.BatchTransport
+// (otherwise the error wraps ErrBatchUnsupported). Once signing succeeds,
+// BatchResult.XML is returned even on error.
 func (c *Client) SendReversion(ctx context.Context, r model.Reversion) (BatchResult, error) {
 	xml, err := c.BuildReversion(r)
 	if err != nil {

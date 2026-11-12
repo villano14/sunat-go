@@ -96,7 +96,7 @@ func (s Summary) FileName() string {
 
 // VoidedLine is one document a Comunicación de baja voids.
 type VoidedLine struct {
-	Type   catalog.DocumentType // 01, 07 or 08 (boletas go in a Summary); 20 or 40 in a Reversion
+	Type   catalog.DocumentType // 01, 07 or 08 (boletas go in a Summary); 20, 40 or 04 in a Reversion
 	Series string
 	Number int64
 	Reason string // Motivo de baja
@@ -129,9 +129,9 @@ func (v Voided) FileName() string {
 }
 
 // Reversion is a Resumen de reversiones (RR): it reverts Comprobantes de
-// Retención (20) and Percepción (40), which a Comunicación de baja cannot void.
-// It is sent with sendSummary to the otros CPE billService, like the documents
-// it reverts. Lines reuse VoidedLine with Type 20 or 40.
+// Retención (20) and Percepción (40), and Liquidaciones de compra (04), which a
+// Comunicación de baja cannot void. Lines reuse VoidedLine with Type 20, 40 or
+// 04. Retentions and perceptions are reverted on the otros CPE billService.
 //
 // Dates are rendered as given, so pass them in America/Lima.
 type Reversion struct {

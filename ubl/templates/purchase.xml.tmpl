@@ -1,0 +1,207 @@
+{{- define "purchaseScheme"}}
+          <cac:TaxScheme>
+            <cbc:ID schemeName="Codigo de tributos" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo05">{{.ID}}</cbc:ID>
+            <cbc:Name>{{.Name}}</cbc:Name>
+            <cbc:TaxTypeCode>{{.Code}}</cbc:TaxTypeCode>
+          </cac:TaxScheme>
+{{- end}}
+{{- define "purchaseCountry"}}
+          <cac:Country>
+            <cbc:IdentificationCode listID="ISO 3166-1" listAgencyName="United Nations Economic Commission for Europe" listName="Country">PE</cbc:IdentificationCode>
+          </cac:Country>
+{{- end -}}
+<?xml version="1.0" encoding="UTF-8"?>
+<SelfBilledInvoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:SelfBilledInvoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+  <ext:UBLExtensions>
+    <ext:UBLExtension>
+      <ext:ExtensionContent/>
+    </ext:UBLExtension>
+  </ext:UBLExtensions>
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID schemeAgencyName="PE:SUNAT">2.0</cbc:CustomizationID>
+  <cbc:ID>{{x .ID}}</cbc:ID>
+  <cbc:IssueDate>{{date .IssueDate}}</cbc:IssueDate>
+  <cbc:IssueTime>{{time .IssueDate}}</cbc:IssueTime>
+  <cbc:InvoiceTypeCode listAgencyName="PE:SUNAT" listName="Tipo de Documento" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo01" listID="{{x (print .OperationType)}}" name="Tipo de Operacion" listSchemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo51">04</cbc:InvoiceTypeCode>
+{{- range .Legends}}
+  <cbc:Note languageLocaleID="{{x (print .Code)}}">{{x .Value}}</cbc:Note>
+{{- end}}
+  <cbc:DocumentCurrencyCode listID="ISO 4217 Alpha" listName="Currency" listAgencyName="United Nations Economic Commission for Europe">{{x .Currency}}</cbc:DocumentCurrencyCode>
+{{- range .DespatchRefs}}
+  <cac:DespatchDocumentReference>
+    <cbc:ID>{{x .Number}}</cbc:ID>
+    <cbc:DocumentTypeCode listAgencyName="PE:SUNAT" listName="Tipo de Documento" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo01">{{x .Type}}</cbc:DocumentTypeCode>
+  </cac:DespatchDocumentReference>
+{{- end}}
+  <cac:Signature>
+    <cbc:ID>SIGN{{x .Company.RUC}}</cbc:ID>
+    <cac:SignatoryParty>
+      <cac:PartyIdentification>
+        <cbc:ID>{{x .Company.RUC}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>{{x .Company.LegalName}}</cbc:Name>
+      </cac:PartyName>
+    </cac:SignatoryParty>
+    <cac:DigitalSignatureAttachment>
+      <cac:ExternalReference>
+        <cbc:URI>#{{.SignatureID}}</cbc:URI>
+      </cac:ExternalReference>
+    </cac:DigitalSignatureAttachment>
+  </cac:Signature>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .Company.RUC}}</cbc:ID>
+      </cac:PartyIdentification>
+{{- if .Company.TradeName}}
+      <cac:PartyName>
+        <cbc:Name>{{x .Company.TradeName}}</cbc:Name>
+      </cac:PartyName>
+{{- end}}
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Company.LegalName}}</cbc:RegistrationName>
+        <cac:RegistrationAddress>
+{{- with .Company.Address}}
+{{- if .Ubigeo}}
+          <cbc:ID schemeAgencyName="PE:INEI" schemeName="Ubigeos">{{x .Ubigeo}}</cbc:ID>
+{{- end}}
+{{- if .Province}}
+          <cbc:CityName>{{x .Province}}</cbc:CityName>
+{{- end}}
+{{- if .Department}}
+          <cbc:CountrySubentity>{{x .Department}}</cbc:CountrySubentity>
+{{- end}}
+{{- if .District}}
+          <cbc:District>{{x .District}}</cbc:District>
+{{- end}}
+          <cac:AddressLine>
+            <cbc:Line>{{x (def .Line "-")}}</cbc:Line>
+          </cac:AddressLine>
+{{- end}}
+{{- template "purchaseCountry"}}
+        </cac:RegistrationAddress>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+{{- with .Seller}}
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="{{x (print .IdentityType)}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{x .Number}}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{x .Name}}</cbc:RegistrationName>
+        <cac:RegistrationAddress>
+          <cbc:ID schemeAgencyName="PE:INEI" schemeName="Ubigeos">{{x .Ubigeo}}</cbc:ID>
+          <cbc:AddressTypeCode>{{x (print .AddressType)}}</cbc:AddressTypeCode>
+          <cac:AddressLine>
+            <cbc:Line>{{x .Line}}</cbc:Line>
+          </cac:AddressLine>
+{{- template "purchaseCountry"}}
+        </cac:RegistrationAddress>
+      </cac:PartyLegalEntity>
+{{- end}}
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+{{- if .VehiclePlate}}
+  <cac:Delivery>
+    <cac:Shipment>
+      <cbc:ID>02</cbc:ID>
+      <cac:ShipmentStage>
+        <cac:TransportMeans>
+          <cac:RoadTransport>
+            <cbc:LicensePlateID>{{x .VehiclePlate}}</cbc:LicensePlateID>
+          </cac:RoadTransport>
+        </cac:TransportMeans>
+      </cac:ShipmentStage>
+    </cac:Shipment>
+  </cac:Delivery>
+{{- end}}
+{{- with .Location}}
+  <cac:DeliveryTerms>
+    <cac:DeliveryLocation>
+      <cbc:LocationTypeCode>{{x (print .Type)}}</cbc:LocationTypeCode>
+      <cac:Address>
+        <cbc:ID schemeAgencyName="PE:INEI" schemeName="Ubigeos">{{x .Ubigeo}}</cbc:ID>
+        <cac:AddressLine>
+          <cbc:Line>{{x .Line}}</cbc:Line>
+        </cac:AddressLine>
+{{- template "purchaseCountry"}}
+      </cac:Address>
+    </cac:DeliveryLocation>
+  </cac:DeliveryTerms>
+{{- end}}
+{{- $cur := .Currency}}
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .IGV}}</cbc:TaxAmount>
+{{- range .Subtotals}}
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="{{x $cur}}">{{amt .Taxable}}</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="{{x $cur}}">{{amt .Tax}}</cbc:TaxAmount>
+      <cac:TaxCategory>
+{{- template "purchaseScheme" .Scheme}}
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+{{- end}}
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="{{x $cur}}">{{amt .LineExtension}}</cbc:LineExtensionAmount>
+    <cbc:TaxInclusiveAmount currencyID="{{x $cur}}">{{amt .TaxInclusive}}</cbc:TaxInclusiveAmount>
+    <cbc:PayableAmount currencyID="{{x $cur}}">{{amt .Payable}}</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+{{- range $i, $l := .Lines}}
+  <cac:InvoiceLine>
+    <cbc:ID>{{add1 $i}}</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="{{x $l.Unit}}" unitCodeListID="UN/ECE rec 20" unitCodeListAgencyName="United Nations Economic Commission for Europe">{{qty $l.Quantity}}</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="{{x $cur}}">{{amt $l.LineAmount}}</cbc:LineExtensionAmount>
+    <cac:PricingReference>
+      <cac:AlternativeConditionPrice>
+        <cbc:PriceAmount currencyID="{{x $cur}}">{{qty $l.UnitPrice}}</cbc:PriceAmount>
+        <cbc:PriceTypeCode listName="Tipo de Precio" listAgencyName="PE:SUNAT" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo16">01</cbc:PriceTypeCode>
+      </cac:AlternativeConditionPrice>
+    </cac:PricingReference>
+    <cac:TaxTotal>
+      <cbc:TaxAmount currencyID="{{x $cur}}">{{amt $l.IGV}}</cbc:TaxAmount>
+      <cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="{{x $cur}}">{{amt $l.LineAmount}}</cbc:TaxableAmount>
+        <cbc:TaxAmount currencyID="{{x $cur}}">{{amt $l.IGV}}</cbc:TaxAmount>
+        <cac:TaxCategory>
+          <cbc:Percent>{{qty $l.IGVPercent}}</cbc:Percent>
+          <cbc:TaxExemptionReasonCode listAgencyName="PE:SUNAT" listName="Afectacion del IGV" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo07">{{x (print $l.Affectation)}}</cbc:TaxExemptionReasonCode>
+{{- template "purchaseScheme" $l.Scheme}}
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+      <cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="{{x $cur}}">{{amt $l.LineAmount}}</cbc:TaxableAmount>
+        <cbc:TaxAmount currencyID="{{x $cur}}">{{amt $l.IncomeTax}}</cbc:TaxAmount>
+        <cac:TaxCategory>
+          <cbc:Percent>{{qty $l.IncomeTaxPercent}}</cbc:Percent>
+{{- template "purchaseScheme" $.IncomeTaxScheme}}
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+    </cac:TaxTotal>
+    <cac:Item>
+      <cbc:Description>{{x $l.Description}}</cbc:Description>
+{{- if $l.ProductCode}}
+      <cac:SellersItemIdentification>
+        <cbc:ID>{{x $l.ProductCode}}</cbc:ID>
+      </cac:SellersItemIdentification>
+{{- end}}
+      <cac:CommodityClassification>
+        <cbc:ItemClassificationCode listID="UNSPSC" listAgencyName="GS1 US" listName="Item Classification">{{x $l.SunatProductCode}}</cbc:ItemClassificationCode>
+      </cac:CommodityClassification>
+{{- range $l.Attributes}}
+      <cac:AdditionalItemProperty>
+        <cbc:Name>{{x .Name}}</cbc:Name>
+        <cbc:NameCode listName="Propiedad del item" listAgencyName="PE:SUNAT" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo55">{{x .Code}}</cbc:NameCode>
+        <cbc:Value>{{x .Value}}</cbc:Value>
+      </cac:AdditionalItemProperty>
+{{- end}}
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="{{x $cur}}">{{qty $l.UnitValue}}</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+{{- end}}
+</SelfBilledInvoice>

@@ -100,8 +100,16 @@ func TestReversionValidation(t *testing.T) {
 	}
 }
 
+func TestReversionAcceptsPurchaseSettlement(t *testing.T) {
+	r := sampleReversion()
+	r.Lines[1].Type = catalog.PurchaseSettlement
+	if _, err := ubl.Reversion(r); err != nil {
+		t.Fatalf("Reversion() of a 04 line: %v", err)
+	}
+}
+
 func TestVoidedRejectsWithholdings(t *testing.T) {
-	for _, typ := range []catalog.DocumentType{catalog.Retention, catalog.Perception} {
+	for _, typ := range []catalog.DocumentType{catalog.Retention, catalog.Perception, catalog.PurchaseSettlement} {
 		v := batchSampleVoided()
 		v.Lines[1].Type = typ
 		_, err := ubl.Voided(v)

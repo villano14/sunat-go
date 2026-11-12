@@ -5,7 +5,7 @@
 # Layout (the layout the test expects):
 #
 #   testdata-xsd/2.1/common/    OASIS UBL 2.1 common components + xmldsig
-#   testdata-xsd/2.1/maindoc/   OASIS Invoice, CreditNote, DebitNote, DespatchAdvice
+#   testdata-xsd/2.1/maindoc/   OASIS Invoice, CreditNote, DebitNote, DespatchAdvice, SelfBilledInvoice
 #   testdata-xsd/2.0/common/    OASIS UBL 2.0 components + SUNAT SunatAggregateComponents
 #   testdata-xsd/2.0/maindoc/   SUNAT SummaryDocuments, VoidedDocuments, Retention, Perception
 #
@@ -54,7 +54,7 @@ for f in \
 	fetch "$oasis/common/$f" "$dest/2.1/common/$f"
 done
 
-for doc in Invoice CreditNote DebitNote DespatchAdvice; do
+for doc in Invoice CreditNote DebitNote DespatchAdvice SelfBilledInvoice; do
 	fetch "$oasis/maindoc/UBL-$doc-2.1.xsd" "$dest/2.1/maindoc/UBL-$doc-2.1.xsd"
 done
 

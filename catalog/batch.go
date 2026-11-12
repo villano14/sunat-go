@@ -26,7 +26,7 @@ type BatchType string
 const (
 	BatchSummary   BatchType = "RC" // Resumen diario de boletas
 	BatchVoided    BatchType = "RA" // Comunicación de baja
-	BatchReversion BatchType = "RR" // Resumen de reversiones de retenciones (20) y percepciones (40)
+	BatchReversion BatchType = "RR" // Resumen de reversiones: retenciones (20), percepciones (40) y liquidaciones de compra (04)
 )
 
 // Billing payment instruction codes of a Resumen diario line (catalog 11).
