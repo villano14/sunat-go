@@ -12,6 +12,12 @@
 //     using the already rounded 10-decimal unit value.
 //   - Line IGV is round2(line base * rate): it is computed from the rounded
 //     base, never from the unrounded product.
+//   - Exception, retail prices: when the caller gives UnitPrice (tax
+//     included) on a plain taxed line (no discount, ISC or other tax), the
+//     customer must be charged exactly round2(quantity * unit price). The line
+//     IGV is then that total minus the line value, which can differ by one
+//     cent from round2(base * rate) and stays within SUNAT's tolerance (3103).
+//     Without it a S/ 6.00 price would be billed as 5.08 + 0.91 = 5.99.
 //
 // Free operations (transferencias gratuitas, Affectation.Free) carry a
 // reference value and, for taxed ones, a notional IGV in the line. Totals keeps
@@ -208,6 +214,13 @@ func Line(in LineInput) (model.InvoiceLine, error) {
 	}
 	out.TaxBase = out.LineAmount.Add(out.ISC)
 	out.IGV = round2(out.TaxBase.Mul(rate))
+	// A tax-included price is what the customer pays: keep the line total at
+	// round2(quantity × unit price) and take the IGV as the difference.
+	if in.UnitValue.IsZero() && rate.IsPositive() && !hasDiscount && !isc.on() && in.OtherTaxPercent.IsZero() {
+		if igv := round2(in.Quantity.Mul(unitPrice)).Sub(out.TaxBase); !igv.IsNegative() {
+			out.IGV = igv
+		}
+	}
 	if !in.OtherTaxPercent.IsZero() {
 		out.OtherTaxBase = out.LineAmount
 		out.OtherTaxPercent = in.OtherTaxPercent

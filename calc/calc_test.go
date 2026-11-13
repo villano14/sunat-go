@@ -80,6 +80,34 @@ func TestLinePricesAndRounding(t *testing.T) {
 	}
 }
 
+// A tax-included price must bill exactly quantity × price: the IGV is the
+// difference between that total and the line value.
+func TestLineRetailPriceKeepsTotal(t *testing.T) {
+	for _, tt := range []struct {
+		name, quantity, price         string
+		wantValue, amount, igv, total string
+	}{
+		{"6.00 is not billed as 5.99", "1", "6", "5.0847457627", "5.08", "0.92", "6"},
+		{"10.00 is not billed as 9.99", "1", "10", "8.4745762712", "8.47", "1.53", "10"},
+		{"several units", "3", "6", "5.0847457627", "15.25", "2.75", "18"},
+		{"exact price is unchanged", "2", "118", "100", "200", "36", "236"},
+		{"fractional quantity", "0.5", "3.5", "2.9661016949", "1.48", "0.27", "1.75"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkedLine(t, calc.LineInput{Quantity: d(tt.quantity), UnitPrice: d(tt.price)})
+			want := model.InvoiceLine{
+				Quantity: d(tt.quantity), Unit: "NIU", Affectation: catalog.TaxedOnerous,
+				UnitValue: d(tt.wantValue), UnitPrice: d(tt.price), PriceType: catalog.UnitPriceWithTax,
+				LineAmount: d(tt.amount), TaxBase: d(tt.amount), IGVPercent: d("18"), IGV: d(tt.igv), TotalTaxes: d(tt.igv),
+			}
+			assertFields(t, got, want)
+			if sum := got.LineAmount.Add(got.IGV); !sum.Equal(d(tt.total)) {
+				t.Errorf("line total = %s, want %s", sum, tt.total)
+			}
+		})
+	}
+}
+
 func TestLineIGVHalfRounding(t *testing.T) {
 	for _, tt := range []struct {
 		name, value, price, igv string
@@ -102,10 +130,10 @@ func TestLineIGVHalfRounding(t *testing.T) {
 
 func TestLineAffectations(t *testing.T) {
 	for _, tt := range []struct {
-		name                      string
-		aff                       catalog.IGVAffectation
+		name                       string
+		aff                        catalog.IGVAffectation
 		given, percent, price, igv string
-		free, fromPrice           bool
+		free, fromPrice            bool
 	}{
 		{"taxed default", catalog.TaxedOnerous, "0", "18", "118", "36", false, false},
 		{"taxed custom rate", catalog.TaxedOnerous, "10.5", "10.5", "110.5", "21", false, false},
@@ -163,8 +191,8 @@ func TestLineMetadata(t *testing.T) {
 
 func TestLineDiscounts(t *testing.T) {
 	for _, tt := range []struct {
-		name, factor, amount                  string
-		reason                                catalog.AllowanceChargeReason
+		name, factor, amount                    string
+		reason                                  catalog.AllowanceChargeReason
 		wantFactor, wantAmount, lineAmount, igv string
 	}{
 		{"default taxable factor", "0.1", "0", "", "0.1", "0.3", "2.7", "0.49"},
@@ -195,8 +223,8 @@ func TestLineDiscounts(t *testing.T) {
 
 func TestLineISC(t *testing.T) {
 	for _, tt := range []struct {
-		name, quantity, value, price, percent, fixed       string
-		system, wantSystem                               catalog.ISCSystem
+		name, quantity, value, price, percent, fixed        string
+		system, wantSystem                                  catalog.ISCSystem
 		wantValue, wantPrice, amount, isc, base, igv, total string
 	}{
 		{"percent inferred", "2", "100", "0", "10", "0", "", catalog.ISCFixedAmount, "100", "129.8", "200", "20", "220", "39.6", "59.6"},
@@ -241,9 +269,9 @@ func TestLineOtherTaxesAndICBPER(t *testing.T) {
 
 func TestLineDiscountWithAllTaxes(t *testing.T) {
 	for _, tt := range []struct {
-		name                                     string
-		reason                                   catalog.AllowanceChargeReason
-		fixed                                    bool
+		name                                        string
+		reason                                      catalog.AllowanceChargeReason
+		fixed                                       bool
 		price, amount, isc, base, igv, other, total string
 	}{
 		{"taxable discount before percent ISC", catalog.DiscountItemTaxBase, false, "129.8", "180", "18", "198", "35.64", "9", "63.64"},
@@ -296,7 +324,9 @@ func TestLineValidationDoesNotMutateInput(t *testing.T) {
 		{"ambiguous ISC", func(in *calc.LineInput) { in.ISCPercent, in.ISCFixedAmount = d("1"), d("1") }, "calc: set either ISC percent or ISC fixed amount, not both"},
 		{"percent wrong system", func(in *calc.LineInput) { in.ISCPercent, in.ISCSystem = d("1"), catalog.ISCMinimum }, "calc: ISC percent requires system \"01\", got \"02\""},
 		{"fixed wrong system", func(in *calc.LineInput) { in.ISCFixedAmount, in.ISCSystem = d("1"), catalog.ISCFixedAmount }, "calc: ISC fixed amount requires system \"02\", got \"01\""},
-		{"price below fixed ISC", func(in *calc.LineInput) { in.UnitValue, in.UnitPrice, in.ISCFixedAmount = decimal.Zero, d("3.53"), d("3") }, "calc: unit price is below the ISC fixed amount"},
+		{"price below fixed ISC", func(in *calc.LineInput) {
+			in.UnitValue, in.UnitPrice, in.ISCFixedAmount = decimal.Zero, d("3.53"), d("3")
+		}, "calc: unit price is below the ISC fixed amount"},
 		{"negative other tax", func(in *calc.LineInput) { in.OtherTaxPercent = d("-1") }, "calc: other tax percent and ICBPER factor cannot be negative"},
 		{"negative bag factor", func(in *calc.LineInput) { in.ICBPERFactor = d("-1") }, "calc: other tax percent and ICBPER factor cannot be negative"},
 		{"free with discount factor", func(in *calc.LineInput) { in.Affectation, in.DiscountFactor = catalog.TaxedFree, d("0.1") }, "calc: free operations cannot carry discounts, ISC, other taxes or ICBPER"},
